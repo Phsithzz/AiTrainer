@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { useSquatWS, LABEL_COLOR } from "../hooks/useSquatWS";
 import { useParams, useNavigate } from "react-router-dom";
+
 const CLASS_TEXT = {
   squat_good:     { label: "GOOD FORM",    th: "ฟอร์มถูกต้อง" },
   squat_bad_heel: { label: "HEEL UP",      th: "ส้นเท้าลอย!" },

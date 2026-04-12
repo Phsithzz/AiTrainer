@@ -1,237 +1,312 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useRef, useState, useEffect } from "react";
+import { useSquatWS, LABEL_COLOR } from "../hooks/useSquatWS";
 
-const WS_URL = "ws://localhost:8000/exercise/squat";
-const SEND_INTERVAL_MS = 100; // ส่ง frame ทุก 100ms = ~10fps
-
-// MediaPipe Pose connections สำหรับวาด skeleton
-const POSE_CONNECTIONS = [
-  [11, 12], [11, 13], [13, 15], [12, 14], [14, 16],
-  [11, 23], [12, 24], [23, 24], [23, 25], [24, 26],
-  [25, 27], [26, 28], [27, 29], [28, 30], [29, 31], [30, 32],
-  [15, 17], [15, 19], [15, 21], [16, 18], [16, 20], [16, 22],
-];
-
-export const LABEL_COLOR = {
-  squat_good:     "#00ff88",
-  squat_bad_heel: "#ff9500",
-  squat_bad_back: "#ff3b30",
-  squat_bad_foot: "#bf5af2",
+const CLASS_TEXT = {
+  squat_good:     { label: "GOOD FORM",  th: "ฟอร์มถูกต้อง" },
+  squat_bad_heel: { label: "HEEL UP",    th: "ส้นเท้าลอย!" },
+  squat_bad_back: { label: "BACK BENT", th: "หลังงอ!" },
+  squat_bad_foot: { label: "FEET UP",   th: "เท้าไม่ติดพื้น!" },
 };
 
-export function useSquatWS(videoRef, overlayCanvasRef, active) {
-  const wsRef        = useRef(null);
-  const intervalRef  = useRef(null);
-  const sendingRef   = useRef(false); // throttle: รอ response ก่อนส่งใหม่
+export default function TrainPage({ exercise, onFinish }) {
+  const videoRef   = useRef(null);
+  const overlayRef = useRef(null);
+  const [active,   setActive]   = useState(false);
+  const [finished, setFinished] = useState(false);
 
-  const [result, setResult]     = useState(null);
-  const [wsStatus, setWsStatus] = useState("disconnected");
+  const { result, wsStatus, resetCounter } = useSquatWS(videoRef, overlayRef, active);
 
-  // ── วาด skeleton จาก landmarks ที่ backend ส่งกลับมา ──────────────────────
-  const drawSkeleton = useCallback((landmarks, color) => {
-    const canvas = overlayCanvasRef.current;
-    const video  = videoRef.current;
-    if (!canvas || !video || !landmarks) return;
+  const label    = result?.label      || null;
+  const color    = label ? (LABEL_COLOR[label] || "#00ff88") : "#00ff88";
+  const cfg      = label ? (CLASS_TEXT[label]  || {}) : {};
+  const proba    = result?.proba       || {};
+  const reps     = result?.reps        || 0;
+  const good     = result?.good_count  || 0;
+  const bad      = result?.bad_count   || 0;
+  const conf     = result?.confidence  || 0;
+  const state    = result?.state       || "UP";
+  const feedback = result?.feedback    || "";
+  const poseOk   = result?.pose_detected ?? false;
 
-    // sync canvas size กับ video
-    canvas.width  = video.videoWidth  || canvas.offsetWidth;
-    canvas.height = video.videoHeight || canvas.offsetHeight;
-
-    const ctx = canvas.getContext("2d");
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    const W = canvas.width;
-    const H = canvas.height;
-
-    // mirror เพราะ video ถูก flip CSS แล้ว
-    const toXY = (lm) => ({ x: (1 - lm.x) * W, y: lm.y * H });
-
-    // วาด connections
-    ctx.lineWidth   = 3;
-    ctx.strokeStyle = color + "cc";
-    ctx.shadowColor = color;
-    ctx.shadowBlur  = 8;
-
-    POSE_CONNECTIONS.forEach(([a, b]) => {
-      if (!landmarks[a] || !landmarks[b]) return;
-      const p1 = toXY(landmarks[a]);
-      const p2 = toXY(landmarks[b]);
-      ctx.beginPath();
-      ctx.moveTo(p1.x, p1.y);
-      ctx.lineTo(p2.x, p2.y);
-      ctx.stroke();
-    });
-
-    // วาด joints
-    ctx.shadowBlur = 14;
-    landmarks.forEach((lm) => {
-      if (lm.visibility < 0.5) return;
-      const { x, y } = toXY(lm);
-      ctx.beginPath();
-      ctx.arc(x, y, 5, 0, Math.PI * 2);
-      ctx.fillStyle   = "#ffffff";
-      ctx.shadowColor = color;
-      ctx.fill();
-    });
-
-    ctx.shadowBlur = 0;
-  }, [overlayCanvasRef, videoRef]);
-
-  const clearCanvas = useCallback(() => {
-    const canvas = overlayCanvasRef.current;
-    if (canvas) canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
-  }, [overlayCanvasRef]);
-
-  // ── capture frame จาก video → base64 JPEG ────────────────────────────────
-  const captureFrame = useCallback(() => {
-    const video = videoRef.current;
-    if (!video || !video.videoWidth) return null;
-
-    const tmpCanvas = document.createElement("canvas");
-    tmpCanvas.width  = video.videoWidth;
-    tmpCanvas.height = video.videoHeight;
-    const ctx = tmpCanvas.getContext("2d");
-
-    // วาด video ลง canvas (ไม่ต้อง flip เพราะ backend ต้องการ frame ปกติ)
-    ctx.drawImage(video, 0, 0);
-    return tmpCanvas.toDataURL("image/jpeg", 0.7); // quality 70% ลด bandwidth
-  }, [videoRef]);
-
-  // ── เชื่อม WebSocket ──────────────────────────────────────────────────────
-  const connectWS = useCallback(() => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) return;
-    setWsStatus("connecting");
-
-    const ws = new WebSocket(WS_URL);
-
-    ws.onopen = () => {
-      console.log("✓ WS connected (Plan A)");
-      setWsStatus("connected");
-    };
-
-    ws.onmessage = (e) => {
-      const data = JSON.parse(e.data);
-
-      if (data.action === "reset_ok") {
-        setResult(null);
-        sendingRef.current = false;
-        return;
-      }
-      if (data.error) {
-        console.warn("WS error:", data.error);
-        sendingRef.current = false;
-        return;
-      }
-
-      // วาด skeleton ถ้ามี landmarks กลับมา
-      if (data.landmarks && data.pose_detected) {
-        const color = LABEL_COLOR[data.label] || "#00ff88";
-        drawSkeleton(data.landmarks, color);
-      } else if (!data.pose_detected) {
-        clearCanvas();
-      }
-
-      setResult(data);
-      sendingRef.current = false; // พร้อมส่ง frame ถัดไป
-    };
-
-    ws.onclose = () => {
-      console.log("✗ WS disconnected");
-      setWsStatus("disconnected");
-      sendingRef.current = false;
-    };
-
-    ws.onerror = () => {
-      console.error("WS error");
-      setWsStatus("error");
-    };
-
-    wsRef.current = ws;
-  }, [drawSkeleton, clearCanvas]);
-
-  const disconnectWS = useCallback(() => {
-    clearInterval(intervalRef.current);
-    wsRef.current?.close();
-    wsRef.current   = null;
-    sendingRef.current = false;
-    setWsStatus("disconnected");
-    setResult(null);
-    clearCanvas();
-  }, [clearCanvas]);
-
-  // ── ส่ง frame loop ────────────────────────────────────────────────────────
-  const startSendLoop = useCallback(() => {
-    clearInterval(intervalRef.current);
-
-    intervalRef.current = setInterval(() => {
-      // throttle: ถ้ายังรอ response อยู่ ข้ามไปก่อน
-      if (sendingRef.current) return;
-      if (wsRef.current?.readyState !== WebSocket.OPEN) return;
-
-      const b64 = captureFrame();
-      if (!b64) return;
-
-      sendingRef.current = true;
-      wsRef.current.send(JSON.stringify({ frame: b64 }));
-    }, SEND_INTERVAL_MS);
-  }, [captureFrame]);
-
-  // ── reset ─────────────────────────────────────────────────────────────────
-  const resetCounter = useCallback(() => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ action: "reset" }));
-    }
-    clearCanvas();
-  }, [clearCanvas]);
-
-  // ── main effect ───────────────────────────────────────────────────────────
+  // flash feedback
+  const [flash, setFlash] = useState("");
   useEffect(() => {
-    if (!active) {
-      disconnectWS();
-      return;
+    if (feedback) {
+      setFlash(feedback);
+      const t = setTimeout(() => setFlash(""), 1800);
+      return () => clearTimeout(t);
     }
+  }, [feedback, result?.reps]);
 
-    // รอให้ video พร้อมก่อน
-    const video = videoRef.current;
-    if (!video) return;
+  const handleFinish = () => {
+    setActive(false);
+    setFinished(true);
+  };
 
-    const startAll = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 640, height: 480, facingMode: "user" },
-          audio: false,
-        });
-        video.srcObject = stream;
-        await new Promise((res) => { video.onloadedmetadata = res; });
-        await video.play();
+  const handleBack = () => {
+    onFinish(result ? { reps, good_count: good, bad_count: bad } : null);
+  };
 
-        connectWS();
+  return (
+    <div className="min-h-screen flex flex-col bg-[#0a0a0f]">
+      {/* top bar */}
+      <header className="flex items-center justify-between px-6 py-4 border-b border-white/5">
+        <button
+          onClick={handleBack}
+          className="text-xs tracking-widest text-white/40 hover:text-white transition-colors"
+        >
+          ← BACK
+        </button>
 
-        // รอให้ WS เปิดก่อนส่ง
-        const waitWS = setInterval(() => {
-          if (wsRef.current?.readyState === WebSocket.OPEN) {
-            clearInterval(waitWS);
-            startSendLoop();
-          }
-        }, 200);
+        <div className="flex items-center gap-3">
+          <div
+            className="w-2 h-2 rounded-full animate-pulse"
+            style={{
+              backgroundColor:
+                wsStatus === "connected"  ? "#00ff88" :
+                wsStatus === "connecting" ? "#ff9500" : "#ff3b30",
+            }}
+          />
+          <span className="text-xs tracking-widest text-white/30 uppercase">
+            {wsStatus === "connected"  ? "connected" :
+             wsStatus === "connecting" ? "connecting..." : wsStatus}
+          </span>
+        </div>
 
-      } catch (err) {
-        console.error("Camera error:", err);
-        setWsStatus("error");
-      }
-    };
+        <span
+          className="text-xs tracking-[0.3em] font-black px-3 py-1 rounded"
+          style={{ color: "#00ff88", border: "1px solid #00ff8840" }}
+        >
+          SQUAT
+        </span>
+      </header>
 
-    startAll();
+      <div className="flex-1 flex flex-col lg:flex-row">
 
-    return () => {
-      clearInterval(intervalRef.current);
-      // หยุด camera stream
-      if (video.srcObject) {
-        video.srcObject.getTracks().forEach((t) => t.stop());
-        video.srcObject = null;
-      }
-      disconnectWS();
-    };
-  }, [active]);
+        {/* ── Camera ── */}
+        <div className="relative flex-1 bg-black flex items-center justify-center min-h-[360px]">
+          <div className="relative w-full h-full flex items-center justify-center">
 
-  return { result, wsStatus, resetCounter };
+            {/* video — mirror ด้วย CSS */}
+            <video
+              ref={videoRef}
+              autoPlay muted playsInline
+              className="w-full h-full object-cover"
+              style={{ transform: "scaleX(-1)" }}
+            />
+
+            {/* skeleton overlay — mirror ตาม video */}
+            <canvas
+              ref={overlayRef}
+              className="absolute inset-0 w-full h-full pointer-events-none"
+              style={{ transform: "scaleX(-1)" }}
+            />
+
+            {/* ── START overlay ── */}
+            {!active && !finished && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/85 z-20">
+                <div className="text-5xl mb-6">📷</div>
+                <p className="text-white/50 text-sm tracking-widest mb-8 text-center px-8 leading-relaxed">
+                  กด START เพื่อเปิดกล้อง<br/>
+                  backend จะรัน MediaPipe และวิเคราะห์ท่าให้
+                </p>
+                <button
+                  onClick={() => setActive(true)}
+                  className="px-10 py-4 text-sm tracking-[0.3em] font-black rounded-xl transition-all active:scale-95"
+                  style={{ background: "linear-gradient(135deg,#00ff88,#00cc6a)", color: "#000" }}
+                >
+                  START SESSION
+                </button>
+              </div>
+            )}
+
+            {/* ── FINISH overlay ── */}
+            {finished && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-20">
+                <div className="text-5xl mb-4">🏁</div>
+                <div className="text-2xl font-black tracking-tight text-white mb-2">SESSION DONE</div>
+                <div className="text-white/40 text-xs tracking-widest mb-8">ผลลัพธ์ถูกบันทึกแล้ว</div>
+                <div className="flex gap-8 mb-8">
+                  {[["REPS",reps,"#fff"],["GOOD",good,"#00ff88"],["BAD",bad,"#ff9500"]].map(([l,v,c])=>(
+                    <div key={l} className="text-center">
+                      <div className="text-3xl font-black" style={{color:c}}>{v}</div>
+                      <div className="text-[10px] tracking-widest text-white/30 mt-1">{l}</div>
+                    </div>
+                  ))}
+                </div>
+                <button onClick={handleBack}
+                  className="px-8 py-3 text-sm tracking-widest text-black font-black rounded-lg"
+                  style={{ background: "#00ff88" }}
+                >BACK TO HOME</button>
+              </div>
+            )}
+
+            {/* ── status badge ── */}
+            {active && (
+              <div className="absolute top-4 left-4 z-10">
+                <div
+                  className="px-4 py-2 rounded-lg backdrop-blur-sm text-sm font-black tracking-wider transition-all duration-300"
+                  style={{
+                    backgroundColor: color + "25",
+                    border: `1px solid ${color}60`,
+                    color,
+                  }}
+                >
+                  {poseOk ? (cfg.label || "DETECTING...") : "NO POSE"}
+                  {label === "squat_bad_foot" && (
+                    <span className="ml-2 text-xs font-normal text-white/50">(ไม่นับ)</span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ── confidence bar ── */}
+            {active && poseOk && (
+              <div className="absolute top-0 left-0 right-0 h-1 bg-white/10 z-10">
+                <div
+                  className="h-full transition-all duration-300"
+                  style={{ width:`${conf*100}%`, backgroundColor:color, boxShadow:`0 0 8px ${color}` }}
+                />
+              </div>
+            )}
+
+            {/* ── state ── */}
+            {active && poseOk && (
+              <div className="absolute top-4 right-4 z-10">
+                <div className="text-xs tracking-widest text-white/40 bg-black/50 px-3 py-1.5 rounded backdrop-blur-sm">
+                  {state === "DOWN" ? "⬇ DOWN" : "⬆ UP"}
+                </div>
+              </div>
+            )}
+
+            {/* ── flash feedback ── */}
+            {flash && (
+              <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+                <div
+                  className="px-8 py-4 rounded-2xl backdrop-blur-sm text-2xl font-black tracking-wide"
+                  style={{
+                    backgroundColor: color+"30",
+                    border: `2px solid ${color}`,
+                    color: "#fff",
+                    textShadow: `0 0 20px ${color}`,
+                  }}
+                >
+                  {flash}
+                </div>
+              </div>
+            )}
+
+            {/* ── no pose hint ── */}
+            {active && !poseOk && wsStatus === "connected" && (
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
+                <div className="text-xs tracking-widest text-white/30 bg-black/60 px-4 py-2 rounded-full backdrop-blur-sm">
+                  ไม่พบท่าทาง — ยืนหน้ากล้อง
+                </div>
+              </div>
+            )}
+
+            {/* ── fps indicator (debug) ── */}
+            {active && wsStatus === "connected" && (
+              <div className="absolute bottom-4 right-4 z-10">
+                <div className="text-[9px] tracking-widest text-white/15 bg-black/40 px-2 py-1 rounded">
+                  ~10fps → server
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── Stats sidebar ── */}
+        <div className="w-full lg:w-80 bg-[#0d0d14] border-t lg:border-t-0 lg:border-l border-white/5 flex flex-col">
+
+          {/* rep counter */}
+          <div className="p-6 border-b border-white/5 text-center">
+            <div className="text-xs tracking-[0.4em] text-white/30 mb-2">REPS</div>
+            <div
+              className="text-8xl font-black leading-none transition-all duration-200"
+              style={{
+                fontFamily: "'Arial Black', sans-serif",
+                color: reps > 0 ? "#fff" : "#333",
+                textShadow: reps > 0 ? `0 0 40px ${color}60` : "none",
+              }}
+            >
+              {reps}
+            </div>
+            <div className="flex gap-3 mt-4">
+              <div className="flex-1 rounded-lg bg-white/5 py-3">
+                <div className="text-[10px] tracking-widest text-[#00ff88]/60 mb-1">GOOD</div>
+                <div className="text-2xl font-black text-[#00ff88]">{good}</div>
+              </div>
+              <div className="flex-1 rounded-lg bg-white/5 py-3">
+                <div className="text-[10px] tracking-widest text-[#ff9500]/60 mb-1">BAD</div>
+                <div className="text-2xl font-black text-[#ff9500]">{bad}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* probability bars */}
+          <div className="p-6 border-b border-white/5 flex-1">
+            <div className="text-[10px] tracking-[0.4em] text-white/20 mb-4">CONFIDENCE</div>
+            {[
+              ["squat_good",     "GOOD",      "#00ff88"],
+              ["squat_bad_heel", "HEEL UP",   "#ff9500"],
+              ["squat_bad_back", "BACK BENT", "#ff3b30"],
+              ["squat_bad_foot", "FEET UP",   "#bf5af2"],
+            ].map(([key, lbl, c]) => (
+              <div key={key} className="mb-4">
+                <div className="flex justify-between items-center mb-1.5">
+                  <span className="text-[10px] tracking-widest font-medium" style={{ color: c }}>
+                    {lbl}
+                  </span>
+                  <span className="text-[10px] text-white/30">
+                    {proba[key] != null ? `${(proba[key]*100).toFixed(0)}%` : "–"}
+                  </span>
+                </div>
+                <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-300"
+                    style={{
+                      width: `${(proba[key]||0)*100}%`,
+                      backgroundColor: c,
+                      boxShadow: label === key ? `0 0 8px ${c}` : "none",
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* actions */}
+          <div className="p-6 flex flex-col gap-3">
+            {active && (
+              <>
+                <button
+                  onClick={resetCounter}
+                  className="w-full py-3 text-xs tracking-widest text-white/50 border border-white/10 rounded-lg hover:border-white/30 hover:text-white transition-all"
+                >
+                  RESET COUNT
+                </button>
+                <button
+                  onClick={handleFinish}
+                  className="w-full py-3 text-xs tracking-widest font-black rounded-lg"
+                  style={{ background: "linear-gradient(135deg,#00ff88,#00cc6a)", color:"#000" }}
+                >
+                  FINISH SESSION
+                </button>
+              </>
+            )}
+            {!active && !finished && (
+              <button
+                onClick={() => setActive(true)}
+                className="w-full py-3 text-xs tracking-widest font-black rounded-lg"
+                style={{ background:"#00ff88", color:"#000" }}
+              >
+                START
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
