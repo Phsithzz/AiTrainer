@@ -1,36 +1,45 @@
 import { useRef, useState, useEffect } from "react";
-import { useSquatWS, LABEL_COLOR } from "../hooks/useExerciseWS";
 import { useParams, useNavigate } from "react-router-dom";
+import { useExerciseWS } from "../hooks/useExerciseWS";
 
-const CLASS_TEXT = {
-  squat_good:     { label: "GOOD FORM",    th: "ฟอร์มถูกต้อง" },
-  squat_bad_heel: { label: "HEEL UP",      th: "ส้นเท้าลอย!" },
-  squat_bad_back: { label: "BACK BENT",    th: "หลังงอ!" },
-  squat_bad_foot: { label: "FEET UP",      th: "เท้าไม่ติดพื้น!" },
-};
-
-const TrainPage = ({onFinish })=> {
-     const { exercise } = useParams(); // รับ "squat" จาก URL /train/squat
-  const navigate     = useNavigate();
-  const videoRef  = useRef(null);
-  const overlayRef = useRef(null);
-  const [active, setActive] = useState(false);
+export default function TrainPage({ onFinish }) {
+  const { exercise }   = useParams();
+  const navigate       = useNavigate();
+  const videoRef       = useRef(null);
+  const overlayRef     = useRef(null);
+  const [active, setActive]     = useState(false);
   const [finished, setFinished] = useState(false);
 
-  const { result, wsStatus, resetCounter } = useSquatWS(videoRef, overlayRef, active);
+  const { result, wsStatus, resetSession, cfg } = useExerciseWS(
+    exercise, videoRef, overlayRef, active
+  );
 
-  const label   = result?.label  || null;
-  const color   = label ? (LABEL_COLOR[label] || "#00ff88") : "#00ff88";
-  const cfg     = label ? (CLASS_TEXT[label] || {}) : {};
-  const proba   = result?.proba  || {};
-  const reps    = result?.reps   || 0;
-  const good    = result?.good_count || 0;
-  const bad     = result?.bad_count  || 0;
-  const conf    = result?.confidence || 0;
-  const state   = result?.state  || "UP";
-  const feedback = result?.feedback || "";
+  const isTimer = cfg.mode === "timer";
+  const accent  = cfg.accent;
 
-  // flash feedback
+  // ── ดึงค่าจาก result ──────────────────────────────────────────────────────
+  const label      = result?.label      || null;
+  const color      = label ? (cfg.labelColors[label] || accent) : accent;
+  const labelText  = label ? (cfg.labelText[label]   || "DETECTING...") : "DETECTING...";
+  const proba      = result?.proba       || {};
+  const conf       = result?.confidence  || 0;
+  const feedback   = result?.feedback    || "";
+  const poseOk     = result?.pose_detected ?? false;
+  const state      = result?.state       || "UP";
+
+  // reps mode
+  const reps  = result?.reps       || 0;
+  const good  = result?.good_count || 0;
+  const bad   = result?.bad_count  || 0;
+
+  // timer mode (plank)
+  const totalTime = result?.total_time || 0;
+  const isHolding = result?.is_holding  || false;
+
+  // pushup elbow angle
+  const elbowAngle = result?.elbow_angle || null;
+
+  // ── flash feedback ────────────────────────────────────────────────────────
   const [flash, setFlash] = useState("");
   useEffect(() => {
     if (feedback) {
@@ -38,183 +47,173 @@ const TrainPage = ({onFinish })=> {
       const t = setTimeout(() => setFlash(""), 1800);
       return () => clearTimeout(t);
     }
-  }, [feedback, result?.reps]);
+  }, [feedback, result?.reps, result?.total_time]);
 
-  const handleStart = () => setActive(true);
-
-  const handleFinish = () => {
-    setActive(false);
-    setFinished(true);
-  };
+  const handleFinish = () => { setActive(false); setFinished(true); };
 
   const handleBack = () => {
-    onFinish(result ? { reps, good_count: good, bad_count: bad } : null, exercise);
+    const sessionResult = isTimer
+      ? { total_time: totalTime }
+      : { reps, good_count: good, bad_count: bad };
+    onFinish(sessionResult, exercise);
     navigate("/");
+  };
+
+  // ── format เวลา mm:ss.d ───────────────────────────────────────────────────
+  const formatTime = (sec) => {
+    const m = Math.floor(sec / 60);
+    const s = (sec % 60).toFixed(1).padStart(4, "0");
+    return m > 0 ? `${m}:${s}` : `${parseFloat(s).toFixed(1)}`;
   };
 
   return (
     <div className="min-h-screen flex flex-col bg-[#0a0a0f]">
-      {/* top bar */}
+      {/* header */}
       <header className="flex items-center justify-between px-6 py-4 border-b border-white/5">
-        <button
-          onClick={handleBack}
-          className="text-xs tracking-widest text-white/40 hover:text-white transition-colors flex items-center gap-2"
-        >
+        <button onClick={handleBack}
+          className="text-xs tracking-widest text-white/40 hover:text-white transition-colors">
           ← BACK
         </button>
 
         <div className="flex items-center gap-3">
-          <div
-            className="w-2 h-2 rounded-full animate-pulse"
-            style={{
-              backgroundColor:
-                wsStatus === "connected" ? "#00ff88" :
-                wsStatus === "connecting" ? "#ff9500" : "#ff3b30",
-            }}
-          />
-          <span className="text-xs tracking-widest text-white/30 uppercase">
-            {wsStatus === "connected" ? "connected" :
-             wsStatus === "connecting" ? "connecting..." : wsStatus}
-          </span>
+          <div className="w-2 h-2 rounded-full animate-pulse" style={{
+            backgroundColor:
+              wsStatus === "connected"  ? accent :
+              wsStatus === "connecting" ? "#ff9500" : "#ff3b30",
+          }} />
+          <span className="text-xs tracking-widest text-white/30 uppercase">{wsStatus}</span>
         </div>
 
-        <div className="flex items-center gap-3">
-          <span
-            className="text-xs tracking-[0.3em] font-black px-3 py-1 rounded"
-            style={{ color: "#00ff88", border: "1px solid #00ff8840" }}
-          >
-            SQUAT
-          </span>
-        </div>
+        <span className="text-xs tracking-[0.3em] font-black px-3 py-1 rounded"
+          style={{ color: accent, border: `1px solid ${accent}40` }}>
+          {exercise?.toUpperCase()}
+        </span>
       </header>
 
-      <div className="flex-1 flex flex-col lg:flex-row gap-0">
-        {/* ── Camera section ── */}
-        <div className="relative flex-1 bg-black flex items-center justify-center min-h-[360px] lg:min-h-0">
-          {/* video + overlay */}
-          <div className="relative w-full h-full flex items-center justify-center">
-            <video
-              ref={videoRef}
-              autoPlay
-              muted
-              playsInline
-              className="w-full h-full object-cover"
-              style={{ transform: "scaleX(-1)" }} // mirror
-            />
-            <canvas
-              ref={overlayRef}
-              className="absolute inset-0 w-full h-full pointer-events-none"
-              style={{ transform: "scaleX(-1)" }}
-            />
+      <div className="flex-1 flex flex-col lg:flex-row">
 
-            {/* start overlay */}
+        {/* ── Camera ── */}
+        <div className="relative flex-1 bg-black flex items-center justify-center min-h-[360px]">
+          <div className="relative w-full h-full flex items-center justify-center">
+
+            <video ref={videoRef} autoPlay muted playsInline
+              className="w-full h-full object-cover"
+              style={{ transform: "scaleX(-1)" }} />
+
+            <canvas ref={overlayRef}
+              className="absolute inset-0 w-full h-full pointer-events-none"
+              style={{ transform: "scaleX(-1)" }} />
+
+            {/* START overlay */}
             {!active && !finished && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-20">
-                <div className="text-5xl mb-6">📷</div>
-                <div className="text-white/60 text-sm tracking-widest mb-8 text-center px-8">
-                  กด START เพื่อเปิดกล้องและเริ่มตรวจจับท่า
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/85 z-20">
+                <div className="text-5xl mb-6">
+                  {exercise === "squat" ? "🏋️" : exercise === "pushup" ? "💪" : "🧘"}
                 </div>
-                <button
-                  onClick={handleStart}
-                  className="px-10 py-4 text-sm tracking-[0.3em] font-black rounded-xl transition-all duration-200 active:scale-95"
-                  style={{
-                    background: "linear-gradient(135deg, #00ff88, #00cc6a)",
-                    color: "#000",
-                  }}
-                >
+                <p className="text-white/50 text-sm tracking-widest mb-2 text-center px-8">
+                  {exercise?.toUpperCase()} — AI Trainer
+                </p>
+                <p className="text-white/30 text-xs tracking-widest mb-8 text-center">
+                  {isTimer ? "จับเวลาเฉพาะตอนทำท่าถูกต้อง" : "นับ rep อัตโนมัติ"}
+                </p>
+                <button onClick={() => setActive(true)}
+                  className="px-10 py-4 text-sm tracking-[0.3em] font-black rounded-xl transition-all active:scale-95"
+                  style={{ background: `linear-gradient(135deg, ${accent}, ${accent}aa)`, color: "#000" }}>
                   START SESSION
                 </button>
               </div>
             )}
 
-            {/* finish overlay */}
+            {/* FINISH overlay */}
             {finished && (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-20">
                 <div className="text-5xl mb-4">🏁</div>
-                <div className="text-2xl font-black tracking-tight text-white mb-2">
-                  SESSION DONE
-                </div>
-                <div className="text-white/40 text-xs tracking-widest mb-8">
-                  ผลลัพธ์ถูกบันทึกแล้ว
-                </div>
-                <div className="flex gap-6 mb-8">
-                  <Stat label="REPS" value={reps} color="#00ff88" />
-                  <Stat label="GOOD" value={good} color="#00ff88" />
-                  <Stat label="BAD"  value={bad}  color="#ff9500" />
-                </div>
-                <button
-                  onClick={handleBack}
+                <div className="text-2xl font-black text-white mb-2">SESSION DONE</div>
+                <div className="text-white/40 text-xs tracking-widest mb-8">ผลลัพธ์ถูกบันทึกแล้ว</div>
+
+                {isTimer ? (
+                  <div className="text-center mb-8">
+                    <div className="text-5xl font-black" style={{ color: accent }}>
+                      {formatTime(totalTime)}
+                    </div>
+                    <div className="text-xs tracking-widest text-white/30 mt-2">SECONDS (GOOD FORM)</div>
+                  </div>
+                ) : (
+                  <div className="flex gap-8 mb-8">
+                    {[["REPS", reps, "#fff"], ["GOOD", good, "#00ff88"], ["BAD", bad, "#ff9500"]].map(([l, v, c]) => (
+                      <div key={l} className="text-center">
+                        <div className="text-3xl font-black" style={{ color: c }}>{v}</div>
+                        <div className="text-[10px] tracking-widest text-white/30 mt-1">{l}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <button onClick={handleBack}
                   className="px-8 py-3 text-sm tracking-widest text-black font-black rounded-lg"
-                  style={{ background: "#00ff88" }}
-                >
+                  style={{ background: accent }}>
                   BACK TO HOME
                 </button>
               </div>
             )}
 
-            {/* status badge top-left */}
+            {/* status badge */}
             {active && (
               <div className="absolute top-4 left-4 z-10">
-                <div
-                  className="px-4 py-2 rounded-lg backdrop-blur-sm text-sm font-black tracking-wider transition-all duration-300"
-                  style={{
-                    backgroundColor: color + "25",
-                    border: `1px solid ${color}60`,
-                    color,
-                  }}
-                >
-                  {cfg.label || "DETECTING..."}
-                  {label === "squat_bad_foot" && (
-                    <span className="ml-2 text-xs font-normal text-white/50">
-                      (ไม่นับ)
-                    </span>
-                  )}
+                <div className="px-4 py-2 rounded-lg backdrop-blur-sm text-sm font-black tracking-wider transition-all duration-300"
+                  style={{ backgroundColor: color + "25", border: `1px solid ${color}60`, color }}>
+                  {poseOk ? labelText : "NO POSE"}
                 </div>
               </div>
             )}
 
-            {/* confidence bar top */}
-            {active && label && (
+            {/* confidence bar */}
+            {active && poseOk && (
               <div className="absolute top-0 left-0 right-0 h-1 bg-white/10 z-10">
-                <div
-                  className="h-full transition-all duration-300"
-                  style={{
-                    width: `${conf * 100}%`,
-                    backgroundColor: color,
-                    boxShadow: `0 0 8px ${color}`,
-                  }}
-                />
+                <div className="h-full transition-all duration-300"
+                  style={{ width: `${conf * 100}%`, backgroundColor: color, boxShadow: `0 0 8px ${color}` }} />
               </div>
             )}
 
-            {/* state indicator */}
-            {active && label && (
-              <div className="absolute top-4 right-4 z-10">
-                <div className="text-xs tracking-widest text-white/40 bg-black/50 px-3 py-1.5 rounded backdrop-blur-sm">
-                  {state === "DOWN" ? "⬇ DOWN" : "⬆ UP"}
-                </div>
+            {/* state / elbow angle indicator */}
+            {active && poseOk && (
+              <div className="absolute top-4 right-4 z-10 flex flex-col items-end gap-2">
+                {/* reps mode: UP/DOWN state */}
+                {!isTimer && (
+                  <div className="text-xs tracking-widest text-white/40 bg-black/50 px-3 py-1.5 rounded backdrop-blur-sm">
+                    {state === "DOWN" ? "⬇ DOWN" : "⬆ UP"}
+                  </div>
+                )}
+                {/* plank: จับเวลาอยู่ */}
+                {isTimer && isHolding && (
+                  <div className="text-xs tracking-widest bg-black/50 px-3 py-1.5 rounded backdrop-blur-sm flex items-center gap-2"
+                    style={{ color: accent }}>
+                    <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: accent }} />
+                    HOLDING
+                  </div>
+                )}
+                {/* pushup: แสดงมุมข้อศอก */}
+                {exercise === "pushup" && elbowAngle !== null && (
+                  <div className="text-xs tracking-widest bg-black/50 px-3 py-1.5 rounded backdrop-blur-sm"
+                    style={{ color: elbowAngle <= 100 ? "#ff3b30" : elbowAngle >= 155 ? "#00ff88" : "#ff9500" }}>
+                    ELBOW {Math.round(elbowAngle)}°
+                  </div>
+                )}
               </div>
             )}
 
             {/* flash feedback */}
             {flash && (
               <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-                <div
-                  className="px-8 py-4 rounded-2xl backdrop-blur-sm text-2xl font-black tracking-wide animate-bounce"
-                  style={{
-                    backgroundColor: color + "30",
-                    border: `2px solid ${color}`,
-                    color: "#fff",
-                    textShadow: `0 0 20px ${color}`,
-                  }}
-                >
+                <div className="px-8 py-4 rounded-2xl backdrop-blur-sm text-2xl font-black tracking-wide"
+                  style={{ backgroundColor: color + "30", border: `2px solid ${color}`, color: "#fff", textShadow: `0 0 20px ${color}` }}>
                   {flash}
                 </div>
               </div>
             )}
 
-            {/* no pose */}
-            {active && !label && (
+            {/* no pose hint */}
+            {active && !poseOk && wsStatus === "connected" && (
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
                 <div className="text-xs tracking-widest text-white/30 bg-black/60 px-4 py-2 rounded-full backdrop-blur-sm">
                   ไม่พบท่าทาง — ยืนหน้ากล้อง
@@ -226,95 +225,123 @@ const TrainPage = ({onFinish })=> {
 
         {/* ── Stats sidebar ── */}
         <div className="w-full lg:w-80 bg-[#0d0d14] border-t lg:border-t-0 lg:border-l border-white/5 flex flex-col">
-          {/* rep counter */}
-          <div className="p-6 border-b border-white/5 text-center">
-            <div className="text-xs tracking-[0.4em] text-white/30 mb-2">REPS</div>
-            <div
-              className="text-8xl font-black leading-none transition-all duration-200"
-              style={{
-                fontFamily: "'Arial Black', sans-serif",
-                color: reps > 0 ? "#fff" : "#333",
-                textShadow: reps > 0 ? `0 0 40px ${color}60` : "none",
-              }}
-            >
-              {reps}
-            </div>
 
-            <div className="flex gap-3 mt-4">
-              <div className="flex-1 rounded-lg bg-white/5 py-3">
-                <div className="text-[10px] tracking-widest text-[#00ff88]/60 mb-1">GOOD</div>
-                <div className="text-2xl font-black text-[#00ff88]">{good}</div>
-              </div>
-              <div className="flex-1 rounded-lg bg-white/5 py-3">
-                <div className="text-[10px] tracking-widest text-[#ff9500]/60 mb-1">BAD</div>
-                <div className="text-2xl font-black text-[#ff9500]">{bad}</div>
-              </div>
-            </div>
+          {/* main stat */}
+          <div className="p-6 border-b border-white/5 text-center">
+            {isTimer ? (
+              /* plank — timer */
+              <>
+                <div className="text-xs tracking-[0.4em] text-white/30 mb-2">HOLD TIME</div>
+                <div className="text-6xl font-black leading-none transition-all duration-200 mb-2"
+                  style={{
+                    fontFamily: "'Arial Black', sans-serif",
+                    color: totalTime > 0 ? "#fff" : "#333",
+                    textShadow: isHolding ? `0 0 40px ${accent}60` : "none",
+                  }}>
+                  {formatTime(totalTime)}
+                </div>
+                <div className="text-xs tracking-widest text-white/20 mb-4">SECONDS</div>
+                <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs tracking-widest transition-all ${isHolding ? "opacity-100" : "opacity-30"}`}
+                  style={{ backgroundColor: accent + "20", color: accent, border: `1px solid ${accent}40` }}>
+                  <div className={`w-1.5 h-1.5 rounded-full ${isHolding ? "animate-pulse" : ""}`}
+                    style={{ backgroundColor: accent }} />
+                  {isHolding ? "HOLDING" : "REST"}
+                </div>
+              </>
+            ) : (
+              /* squat/pushup — reps */
+              <>
+                <div className="text-xs tracking-[0.4em] text-white/30 mb-2">REPS</div>
+                <div className="text-8xl font-black leading-none transition-all duration-200"
+                  style={{
+                    fontFamily: "'Arial Black', sans-serif",
+                    color: reps > 0 ? "#fff" : "#333",
+                    textShadow: reps > 0 ? `0 0 40px ${accent}60` : "none",
+                  }}>
+                  {reps}
+                </div>
+                <div className="flex gap-3 mt-4">
+                  <div className="flex-1 rounded-lg bg-white/5 py-3">
+                    <div className="text-[10px] tracking-widest text-[#00ff88]/60 mb-1">GOOD</div>
+                    <div className="text-2xl font-black text-[#00ff88]">{good}</div>
+                  </div>
+                  <div className="flex-1 rounded-lg bg-white/5 py-3">
+                    <div className="text-[10px] tracking-widest text-[#ff9500]/60 mb-1">BAD</div>
+                    <div className="text-2xl font-black text-[#ff9500]">{bad}</div>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
           {/* probability bars */}
           <div className="p-6 border-b border-white/5 flex-1">
             <div className="text-[10px] tracking-[0.4em] text-white/20 mb-4">CONFIDENCE</div>
-            {Object.entries({
-              squat_good:     { label: "GOOD",      color: "#00ff88" },
-              squat_bad_heel: { label: "HEEL UP",   color: "#ff9500" },
-              squat_bad_back: { label: "BACK BENT", color: "#ff3b30" },
-              squat_bad_foot: { label: "FEET UP",   color: "#bf5af2" },
-            }).map(([key, cfg]) => (
+            {cfg.probaKeys.map(({ key, label: lbl, color: c }) => (
               <div key={key} className="mb-4">
                 <div className="flex justify-between items-center mb-1.5">
-                  <span
-                    className="text-[10px] tracking-widest font-medium"
-                    style={{ color: cfg.color }}
-                  >
-                    {cfg.label}
-                  </span>
+                  <span className="text-[10px] tracking-widest font-medium" style={{ color: c }}>{lbl}</span>
                   <span className="text-[10px] text-white/30">
-                    {proba[key] ? `${(proba[key] * 100).toFixed(0)}%` : "–"}
+                    {proba[key] != null ? `${(proba[key] * 100).toFixed(0)}%` : "–"}
                   </span>
                 </div>
                 <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-300"
+                  <div className="h-full rounded-full transition-all duration-300"
                     style={{
                       width: `${(proba[key] || 0) * 100}%`,
-                      backgroundColor: cfg.color,
-                      boxShadow: label === key ? `0 0 8px ${cfg.color}` : "none",
-                    }}
-                  />
+                      backgroundColor: c,
+                      boxShadow: label === key ? `0 0 8px ${c}` : "none",
+                    }} />
                 </div>
               </div>
             ))}
+
+            {/* pushup extra: elbow angle gauge */}
+            {exercise === "pushup" && elbowAngle !== null && (
+              <div className="mt-4 pt-4 border-t border-white/5">
+                <div className="text-[10px] tracking-[0.4em] text-white/20 mb-3">ELBOW ANGLE</div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[10px] text-white/30">0°</span>
+                  <span className="text-sm font-black"
+                    style={{ color: elbowAngle <= 100 ? "#ff3b30" : elbowAngle >= 155 ? "#00ff88" : "#ff9500" }}>
+                    {Math.round(elbowAngle)}°
+                  </span>
+                  <span className="text-[10px] text-white/30">180°</span>
+                </div>
+                <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full transition-all duration-150"
+                    style={{
+                      width: `${(elbowAngle / 180) * 100}%`,
+                      backgroundColor: elbowAngle <= 100 ? "#ff3b30" : elbowAngle >= 155 ? "#00ff88" : "#ff9500",
+                    }} />
+                </div>
+                <div className="flex justify-between mt-1">
+                  <span className="text-[9px] text-[#ff3b30]/60">DOWN ≤100°</span>
+                  <span className="text-[9px] text-[#00ff88]/60">UP ≥155°</span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* actions */}
           <div className="p-6 flex flex-col gap-3">
             {active && (
               <>
-                <button
-                  onClick={resetCounter}
-                  className="w-full py-3 text-xs tracking-widest text-white/50 border border-white/10 rounded-lg hover:border-white/30 hover:text-white transition-all"
-                >
-                  RESET COUNT
+                <button onClick={resetSession}
+                  className="w-full py-3 text-xs tracking-widest text-white/50 border border-white/10 rounded-lg hover:border-white/30 hover:text-white transition-all">
+                  RESET
                 </button>
-                <button
-                  onClick={handleFinish}
-                  className="w-full py-3 text-xs tracking-widest font-black rounded-lg transition-all"
-                  style={{
-                    background: "linear-gradient(135deg, #00ff88, #00cc6a)",
-                    color: "#000",
-                  }}
-                >
+                <button onClick={handleFinish}
+                  className="w-full py-3 text-xs tracking-widest font-black rounded-lg"
+                  style={{ background: `linear-gradient(135deg, ${accent}, ${accent}aa)`, color: "#000" }}>
                   FINISH SESSION
                 </button>
               </>
             )}
             {!active && !finished && (
-              <button
-                onClick={handleStart}
+              <button onClick={() => setActive(true)}
                 className="w-full py-3 text-xs tracking-widest font-black rounded-lg"
-                style={{ background: "#00ff88", color: "#000" }}
-              >
+                style={{ background: accent, color: "#000" }}>
                 START
               </button>
             )}
@@ -324,16 +351,3 @@ const TrainPage = ({onFinish })=> {
     </div>
   );
 }
-
-function Stat({ label, value, color }) {
-  return (
-    <div className="text-center">
-      <div className="text-3xl font-black" style={{ color }}>
-        {value}
-      </div>
-      <div className="text-[10px] tracking-widest text-white/30 mt-1">{label}</div>
-    </div>
-  );
-}
-
-export default TrainPage
