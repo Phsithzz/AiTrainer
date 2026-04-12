@@ -8,7 +8,7 @@ const CLASS_TEXT = {
   squat_bad_foot: { label: "FEET UP",   th: "เท้าไม่ติดพื้น!" },
 };
 
-export default function TrainPage({ exercise, onFinish }) {
+export default function TrainPage({  onFinish }) {
   const videoRef   = useRef(null);
   const overlayRef = useRef(null);
   const [active,   setActive]   = useState(false);
