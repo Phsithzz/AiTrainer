@@ -3,6 +3,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from services.squat_service import SquatPredictor
 from services.pushup_service import PushupPredictor
+from services.plank_service import PlankPredictor
 
 router  = APIRouter()
 
@@ -65,3 +66,32 @@ async def pushup_websocket(websocket: WebSocket):
 
     except WebSocketDisconnect:
         print("✗ Client disconnected — pushup")
+
+
+
+@router.websocket("/ws/plank")
+async def plank_exercise(websocket: WebSocket):
+    await websocket.accept()
+    predictor = PlankPredictor()
+    print("✓ Client connected — plank")
+
+    try:
+        while True:
+            data = await websocket.receive_text()
+            msg  = json.loads(data)
+
+            if msg.get("action") == "reset":
+                predictor.reset()
+                await websocket.send_json({"action": "reset_ok"})
+                continue
+
+            landmarks = msg.get("landmarks")
+            if not landmarks or len(landmarks) != 33:
+                await websocket.send_json({"error": "invalid landmarks"})
+                continue
+
+            result = predictor.predict(landmarks)
+            await websocket.send_json(result)
+
+    except WebSocketDisconnect:
+        print("✗ Client disconnected — plank")
