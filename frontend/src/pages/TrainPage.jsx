@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from "react";
-import { useSquatWS, LABEL_COLOR } from "../hooks/useSquatWS";
+import { useSquatWS, LABEL_COLOR } from "../hooks/useExerciseWS";
 import { useParams, useNavigate } from "react-router-dom";
 
 const CLASS_TEXT = {

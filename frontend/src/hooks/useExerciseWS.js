@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 
-const WS_URL = "ws://localhost:8000/exercise/squat";
-const SEND_INTERVAL_MS = 100; // ส่ง frame ทุก 100ms = ~10fps
+const WS_BASE = "ws://localhost:8000/ws";
+const SEND_INTERVAL_MS = 100;
 
-// MediaPipe Pose connections สำหรับวาด skeleton
 const POSE_CONNECTIONS = [
   [11, 12], [11, 13], [13, 15], [12, 14], [14, 16],
   [11, 23], [12, 24], [23, 24], [23, 25], [24, 26],
@@ -11,28 +10,88 @@ const POSE_CONNECTIONS = [
   [15, 17], [15, 19], [15, 21], [16, 18], [16, 20], [16, 22],
 ];
 
-export const LABEL_COLOR = {
-  squat_good:     "#00ff88",
-  squat_bad_heel: "#ff9500",
-  squat_bad_back: "#ff3b30",
-  squat_bad_foot: "#bf5af2",
+export const EXERCISE_CONFIG = {
+  squat: {
+    wsPath:  "squat",
+    accent:  "#00ff88",
+    labelColors: {
+      squat_good:     "#00ff88",
+      squat_bad_heel: "#ff9500",
+      squat_bad_back: "#ff3b30",
+      squat_bad_foot: "#bf5af2",
+    },
+    labelText: {
+      squat_good:     "GOOD FORM",
+      squat_bad_heel: "HEEL UP",
+      squat_bad_back: "BACK BENT",
+      squat_bad_foot: "FEET UP",
+    },
+    probaKeys: [
+      { key: "squat_good",     label: "GOOD",      color: "#00ff88" },
+      { key: "squat_bad_heel", label: "HEEL UP",   color: "#ff9500" },
+      { key: "squat_bad_back", label: "BACK BENT", color: "#ff3b30" },
+      { key: "squat_bad_foot", label: "FEET UP",   color: "#bf5af2" },
+    ],
+    mode: "reps",   // "reps" | "timer"
+  },
+  pushup: {
+    wsPath:  "pushup",
+    accent:  "#ff6b35",
+    labelColors: {
+      pushup_good:     "#ff6b35",
+      pushup_bad_neck: "#ff9500",
+      pushup_bad_back: "#ff3b30",
+    },
+    labelText: {
+      pushup_good:     "GOOD FORM",
+      pushup_bad_neck: "NECK DOWN",
+      pushup_bad_back: "BACK BENT",
+    },
+    probaKeys: [
+      { key: "pushup_good",     label: "GOOD",      color: "#ff6b35" },
+      { key: "pushup_bad_neck", label: "NECK DOWN", color: "#ff9500" },
+      { key: "pushup_bad_back", label: "BACK BENT", color: "#ff3b30" },
+    ],
+    mode: "reps",
+  },
+  plank: {
+    wsPath:  "plank",
+    accent:  "#a855f7",
+    labelColors: {
+      plank_good:     "#a855f7",
+      plank_bad_back: "#ff3b30",
+      plank_bad_hip:  "#ff9500",
+    },
+    labelText: {
+      plank_good:     "GOOD FORM",
+      plank_bad_back: "BACK BENT",
+      plank_bad_hip:  "HIP HIGH",
+    },
+    probaKeys: [
+      { key: "plank_good",     label: "GOOD",      color: "#a855f7" },
+      { key: "plank_bad_back", label: "BACK BENT", color: "#ff3b30" },
+      { key: "plank_bad_hip",  label: "HIP HIGH",  color: "#ff9500" },
+    ],
+    mode: "timer",  // plank ใช้จับเวลา ไม่นับ rep
+  },
 };
 
-export function useSquatWS(videoRef, overlayCanvasRef, active) {
-  const wsRef        = useRef(null);
-  const intervalRef  = useRef(null);
-  const sendingRef   = useRef(false); // throttle: รอ response ก่อนส่งใหม่
+export function useExerciseWS(exercise, videoRef, overlayCanvasRef, active) {
+  const wsRef       = useRef(null);
+  const intervalRef = useRef(null);
+  const sendingRef  = useRef(false);
 
   const [result, setResult]     = useState(null);
   const [wsStatus, setWsStatus] = useState("disconnected");
 
-  // ── วาด skeleton จาก landmarks ที่ backend ส่งกลับมา ──────────────────────
+  const cfg = EXERCISE_CONFIG[exercise] || EXERCISE_CONFIG.squat;
+
+  // ── วาด skeleton ──────────────────────────────────────────────────────────
   const drawSkeleton = useCallback((landmarks, color) => {
     const canvas = overlayCanvasRef.current;
     const video  = videoRef.current;
     if (!canvas || !video || !landmarks) return;
 
-    // sync canvas size กับ video
     canvas.width  = video.videoWidth  || canvas.offsetWidth;
     canvas.height = video.videoHeight || canvas.offsetHeight;
 
@@ -41,11 +100,8 @@ export function useSquatWS(videoRef, overlayCanvasRef, active) {
 
     const W = canvas.width;
     const H = canvas.height;
-
-    // mirror เพราะ video ถูก flip CSS แล้ว
     const toXY = (lm) => ({ x: (1 - lm.x) * W, y: lm.y * H });
 
-    // วาด connections
     ctx.lineWidth   = 3;
     ctx.strokeStyle = color + "cc";
     ctx.shadowColor = color;
@@ -61,7 +117,6 @@ export function useSquatWS(videoRef, overlayCanvasRef, active) {
       ctx.stroke();
     });
 
-    // วาด joints
     ctx.shadowBlur = 14;
     landmarks.forEach((lm) => {
       if (lm.visibility < 0.5) return;
@@ -72,7 +127,6 @@ export function useSquatWS(videoRef, overlayCanvasRef, active) {
       ctx.shadowColor = color;
       ctx.fill();
     });
-
     ctx.shadowBlur = 0;
   }, [overlayCanvasRef, videoRef]);
 
@@ -81,102 +135,73 @@ export function useSquatWS(videoRef, overlayCanvasRef, active) {
     if (canvas) canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
   }, [overlayCanvasRef]);
 
-  // ── capture frame จาก video → base64 JPEG ────────────────────────────────
+  // ── capture frame ─────────────────────────────────────────────────────────
   const captureFrame = useCallback(() => {
     const video = videoRef.current;
     if (!video || !video.videoWidth) return null;
-
-    const tmpCanvas = document.createElement("canvas");
-    tmpCanvas.width  = video.videoWidth;
-    tmpCanvas.height = video.videoHeight;
-    const ctx = tmpCanvas.getContext("2d");
-
-    // วาด video ลง canvas (ไม่ต้อง flip เพราะ backend ต้องการ frame ปกติ)
-    ctx.drawImage(video, 0, 0);
-    return tmpCanvas.toDataURL("image/jpeg", 0.7); // quality 70% ลด bandwidth
+    const tmp = document.createElement("canvas");
+    tmp.width  = video.videoWidth;
+    tmp.height = video.videoHeight;
+    tmp.getContext("2d").drawImage(video, 0, 0);
+    return tmp.toDataURL("image/jpeg", 0.7);
   }, [videoRef]);
 
-  // ── เชื่อม WebSocket ──────────────────────────────────────────────────────
+  // ── WebSocket ─────────────────────────────────────────────────────────────
   const connectWS = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
     setWsStatus("connecting");
 
-    const ws = new WebSocket(WS_URL);
+    const ws = new WebSocket(`${WS_BASE}/${cfg.wsPath}`);
 
     ws.onopen = () => {
-      console.log("✓ WS connected (Plan A)");
+      console.log(`✓ WS connected — ${exercise}`);
       setWsStatus("connected");
     };
 
     ws.onmessage = (e) => {
       const data = JSON.parse(e.data);
+      if (data.action === "reset_ok") { setResult(null); sendingRef.current = false; return; }
+      if (data.error) { sendingRef.current = false; return; }
 
-      if (data.action === "reset_ok") {
-        setResult(null);
-        sendingRef.current = false;
-        return;
-      }
-      if (data.error) {
-        console.warn("WS error:", data.error);
-        sendingRef.current = false;
-        return;
-      }
-
-      // วาด skeleton ถ้ามี landmarks กลับมา
       if (data.landmarks && data.pose_detected) {
-        const color = LABEL_COLOR[data.label] || "#00ff88";
+        const color = cfg.labelColors[data.label] || cfg.accent;
         drawSkeleton(data.landmarks, color);
       } else if (!data.pose_detected) {
         clearCanvas();
       }
 
       setResult(data);
-      sendingRef.current = false; // พร้อมส่ง frame ถัดไป
-    };
-
-    ws.onclose = () => {
-      console.log("✗ WS disconnected");
-      setWsStatus("disconnected");
       sendingRef.current = false;
     };
 
-    ws.onerror = () => {
-      console.error("WS error");
-      setWsStatus("error");
-    };
-
+    ws.onclose = () => { setWsStatus("disconnected"); sendingRef.current = false; };
+    ws.onerror = () => setWsStatus("error");
     wsRef.current = ws;
-  }, [drawSkeleton, clearCanvas]);
+  }, [exercise, cfg, drawSkeleton, clearCanvas]);
 
   const disconnectWS = useCallback(() => {
     clearInterval(intervalRef.current);
     wsRef.current?.close();
-    wsRef.current   = null;
+    wsRef.current      = null;
     sendingRef.current = false;
     setWsStatus("disconnected");
     setResult(null);
     clearCanvas();
   }, [clearCanvas]);
 
-  // ── ส่ง frame loop ────────────────────────────────────────────────────────
   const startSendLoop = useCallback(() => {
     clearInterval(intervalRef.current);
-
     intervalRef.current = setInterval(() => {
-      // throttle: ถ้ายังรอ response อยู่ ข้ามไปก่อน
       if (sendingRef.current) return;
       if (wsRef.current?.readyState !== WebSocket.OPEN) return;
-
       const b64 = captureFrame();
       if (!b64) return;
-
       sendingRef.current = true;
       wsRef.current.send(JSON.stringify({ frame: b64 }));
     }, SEND_INTERVAL_MS);
   }, [captureFrame]);
 
-  // ── reset ─────────────────────────────────────────────────────────────────
-  const resetCounter = useCallback(() => {
+  const resetSession = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ action: "reset" }));
     }
@@ -185,12 +210,8 @@ export function useSquatWS(videoRef, overlayCanvasRef, active) {
 
   // ── main effect ───────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!active) {
-      disconnectWS();
-      return;
-    }
+    if (!active) { disconnectWS(); return; }
 
-    // รอให้ video พร้อมก่อน
     const video = videoRef.current;
     if (!video) return;
 
@@ -206,14 +227,12 @@ export function useSquatWS(videoRef, overlayCanvasRef, active) {
 
         connectWS();
 
-        // รอให้ WS เปิดก่อนส่ง
         const waitWS = setInterval(() => {
           if (wsRef.current?.readyState === WebSocket.OPEN) {
             clearInterval(waitWS);
             startSendLoop();
           }
         }, 200);
-
       } catch (err) {
         console.error("Camera error:", err);
         setWsStatus("error");
@@ -224,14 +243,13 @@ export function useSquatWS(videoRef, overlayCanvasRef, active) {
 
     return () => {
       clearInterval(intervalRef.current);
-      // หยุด camera stream
       if (video.srcObject) {
         video.srcObject.getTracks().forEach((t) => t.stop());
         video.srcObject = null;
       }
       disconnectWS();
     };
-  }, [active]);
+  }, [active, exercise]);
 
-  return { result, wsStatus, resetCounter };
+  return { result, wsStatus, resetSession, cfg };
 }
