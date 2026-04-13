@@ -56,12 +56,12 @@ async def pushup_websocket(websocket: WebSocket):
                 await websocket.send_json({"action": "reset_ok"})
                 continue
 
-            landmarks = msg.get("landmarks")
-            if not landmarks or len(landmarks) != 33:
-                await websocket.send_json({"error": "invalid landmarks"})
+            b64_frame = msg.get("frame")
+            if not b64_frame:
+                await websocket.send_json({"error": "no frame"})
                 continue
 
-            result = predictor.predict(landmarks)
+            result = predictor.predict(b64_frame)
             await websocket.send_json(result)
 
     except WebSocketDisconnect:
@@ -85,12 +85,13 @@ async def plank_exercise(websocket: WebSocket):
                 await websocket.send_json({"action": "reset_ok"})
                 continue
 
-            landmarks = msg.get("landmarks")
-            if not landmarks or len(landmarks) != 33:
-                await websocket.send_json({"error": "invalid landmarks"})
+
+            b64_frame = msg.get("frame")
+            if not b64_frame:
+                await websocket.send_json({"error": "no frame"})
                 continue
 
-            result = predictor.predict(landmarks)
+            result = predictor.predict(b64_frame)
             await websocket.send_json(result)
 
     except WebSocketDisconnect:
