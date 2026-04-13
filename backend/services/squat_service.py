@@ -61,12 +61,12 @@ class RepCounter:
             if not cfg["count_rep"]:
                 pass
             elif confidence >= GOOD_THRESHOLD:
-                self.count += 1
                 new_rep = True
                 if self.last_label == "squat_good":
-                    self.good_count += 1
+                    self.count += 1         # ✅ ย้ายมาตรงนี้: บวก Rep หลักเฉพาะตอนทำถูกต้องเท่านั้น
+                    self.good_count += 1    # ✅ บวกสถิติ Good
                 else:
-                    self.bad_count += 1
+                    self.bad_count += 1     # ❌ ถ้าทำผิด บวกแค่สถิติ Bad แต่ไม่บวก Rep หลัก
 
         return new_rep
 
