@@ -1,5 +1,8 @@
+import cv2
+import mediapipe as mp
 import numpy as np
 import joblib
+import base64
 import time
 from pathlib import Path
 
@@ -63,15 +66,56 @@ class PlankPredictor:
     def __init__(self):
         self.pred_buffer = []
         self.timer       = HoldTimer()
+        self.pose = mp.solutions.pose.Pose(
+            static_image_mode=False,
+            model_complexity=1,
+            smooth_landmarks=True,
+            min_detection_confidence=0.5,
+            min_tracking_confidence=0.5,
+        )
+
+    def decode_frame(self, b64_string: str) -> np.ndarray:
+        if "," in b64_string:
+            b64_string = b64_string.split(",", 1)[1]
+        img_bytes = base64.b64decode(b64_string)
+        arr = np.frombuffer(img_bytes, dtype=np.uint8)
+        frame = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+        return frame
 
     def landmarks_to_vector(self, landmarks: list) -> np.ndarray:
         row = []
         for lm in landmarks:
             row.extend([lm["x"], lm["y"], lm["z"], lm["visibility"]])
         return np.array(row).reshape(1, -1)
+        
+    def landmarks_to_list(self, landmarks) -> list:
+        return [
+            {"x": lm.x, "y": lm.y, "z": lm.z, "visibility": lm.visibility}
+            for lm in landmarks.landmark
+        ]
 
-    def predict(self, landmarks: list) -> dict:
-        vec   = self.landmarks_to_vector(landmarks)
+    def predict(self, b64_frame: str) -> dict:
+        frame = self.decode_frame(b64_frame)
+        if frame is None:
+            return {"error": "decode failed", "pose_detected": False}
+
+        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        rgb.flags.writeable = False
+        results = self.pose.process(rgb)
+
+        if not results.pose_landmarks:
+            return {
+                "pose_detected": False,
+                "label":         "no_pose",
+                "confidence":    0.0,
+                "feedback":      "",
+                "proba":         {},
+                "landmarks":     None,
+                **self.timer.to_dict(),
+            }
+
+        lm_list = self.landmarks_to_list(results.pose_landmarks)
+        vec   = self.landmarks_to_vector(lm_list)
         proba = model.predict_proba(vec)
         idx   = int(np.argmax(proba))
 
@@ -86,19 +130,22 @@ class PlankPredictor:
         self.timer.update(label, confidence)
 
         cfg      = CLASS_CONFIG.get(label, DEFAULT_CONFIG)
-        # แสดง feedback ตลอดเวลาที่ทำท่าผิด ไม่ใช่แค่ตอน new_rep
         feedback = cfg["feedback"] if (label != "plank_good" and confidence >= GOOD_THRESHOLD) else ""
-
         proba_dict = {cls: float(proba[0][i]) for i, cls in enumerate(le.classes_)}
 
         return {
+            "pose_detected": True,
             "label":      label,
             "confidence": confidence,
             "feedback":   feedback,
             "proba":      proba_dict,
-            **self.timer.to_dict(),   # total_time, is_holding
+            "landmarks":  lm_list,
+            **self.timer.to_dict(),
         }
 
     def reset(self):
         self.pred_buffer.clear()
         self.timer.reset()
+        
+    def close(self):
+        self.pose.close()

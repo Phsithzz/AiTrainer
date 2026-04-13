@@ -1,5 +1,8 @@
+import cv2
+import mediapipe as mp
 import numpy as np
 import joblib
+import base64
 from pathlib import Path
 
 BASE_DIR = Path(__file__).parent.parent
@@ -89,15 +92,58 @@ class PushupPredictor:
     def __init__(self):
         self.pred_buffer = []
         self.counter     = RepCounter()
+        self.pose = mp.solutions.pose.Pose(
+            static_image_mode=False,
+            model_complexity=1,
+            smooth_landmarks=True,
+            min_detection_confidence=0.5,
+            min_tracking_confidence=0.5,
+        )
+        
+    def decode_frame(self, b64_string: str) -> np.ndarray:
+        if "," in b64_string:
+            b64_string = b64_string.split(",", 1)[1]
+        img_bytes = base64.b64decode(b64_string)
+        arr = np.frombuffer(img_bytes, dtype=np.uint8)
+        frame = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+        return frame
 
     def landmarks_to_vector(self, landmarks: list) -> np.ndarray:
         row = []
         for lm in landmarks:
             row.extend([lm["x"], lm["y"], lm["z"], lm["visibility"]])
         return np.array(row).reshape(1, -1)
+        
+    def landmarks_to_list(self, landmarks) -> list:
+        return [
+            {"x": lm.x, "y": lm.y, "z": lm.z, "visibility": lm.visibility}
+            for lm in landmarks.landmark
+        ]
 
-    def predict(self, landmarks: list) -> dict:
-        vec   = self.landmarks_to_vector(landmarks)
+    def predict(self, b64_frame: str) -> dict:
+        frame = self.decode_frame(b64_frame)
+        if frame is None:
+            return {"error": "decode failed", "pose_detected": False}
+
+        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        rgb.flags.writeable = False
+        results = self.pose.process(rgb)
+
+        if not results.pose_landmarks:
+            return {
+                "pose_detected": False,
+                "label":         "no_pose",
+                "confidence":    0.0,
+                "feedback":      "",
+                "count_rep":     False,
+                "proba":         {},
+                "elbow_angle":   None,
+                "landmarks":     None,
+                **self.counter.to_dict(),
+            }
+
+        lm_list = self.landmarks_to_list(results.pose_landmarks)
+        vec   = self.landmarks_to_vector(lm_list)
         proba = model.predict_proba(vec)
         idx   = int(np.argmax(proba))
 
@@ -109,25 +155,28 @@ class PushupPredictor:
         label      = le.inverse_transform([smooth_idx])[0]
         confidence = float(proba[0][smooth_idx])
 
-        new_rep  = self.counter.update(landmarks, label, confidence)
+        new_rep  = self.counter.update(lm_list, label, confidence)
         cfg      = CLASS_CONFIG.get(label, DEFAULT_CONFIG)
         feedback = cfg["feedback"] if new_rep and label != "pushup_good" else ""
 
-        # คำนวณมุมข้อศอกส่งกลับด้วย
-        elbow_angle = self.counter._elbow_angle(landmarks)
-
+        elbow_angle = self.counter._elbow_angle(lm_list)
         proba_dict = {cls: float(proba[0][i]) for i, cls in enumerate(le.classes_)}
 
         return {
+            "pose_detected": True,
             "label":       label,
             "confidence":  confidence,
             "feedback":    feedback,
             "count_rep":   cfg["count_rep"],
             "proba":       proba_dict,
-            "elbow_angle": elbow_angle,   # ส่งไปให้ frontend แสดงด้วย
+            "elbow_angle": elbow_angle,
+            "landmarks":   lm_list,
             **self.counter.to_dict(),
         }
 
     def reset(self):
         self.pred_buffer.clear()
         self.counter.reset()
+        
+    def close(self):
+        self.pose.close()

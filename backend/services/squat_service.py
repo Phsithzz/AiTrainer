@@ -98,7 +98,6 @@ class SquatPredictor:
 
     def decode_frame(self, b64_string: str) -> np.ndarray:
         """base64 JPEG → numpy BGR array"""
-        # กำจัด data URL prefix ถ้ามี: "data:image/jpeg;base64,..."
         if "," in b64_string:
             b64_string = b64_string.split(",", 1)[1]
         img_bytes = base64.b64decode(b64_string)
@@ -124,6 +123,17 @@ class SquatPredictor:
             for lm in landmarks.landmark
         ]
 
+    def _calculate_angle(self, a, b, c) -> float:
+        """คำนวณองศาระหว่างจุด a, b, c (b คือจุดศูนย์กลาง)"""
+        a = np.array(a)
+        b = np.array(b)
+        c = np.array(c)
+        radians = np.arctan2(c[1]-b[1], c[0]-b[0]) - np.arctan2(a[1]-b[1], a[0]-b[0])
+        angle = np.abs(radians*180.0/np.pi)
+        if angle > 180.0:
+            angle = 360.0 - angle
+        return angle
+
     def predict(self, b64_frame: str) -> dict:
         # 1. decode frame
         frame = self.decode_frame(b64_frame)
@@ -147,7 +157,7 @@ class SquatPredictor:
                 **self.counter.to_dict(),
             }
 
-        # 3. predict
+        # 3. predict ด้วย Model
         vec   = self.landmarks_to_vector(results.pose_landmarks)
         proba = model.predict_proba(vec)
         idx   = int(np.argmax(proba))
@@ -161,12 +171,40 @@ class SquatPredictor:
         label      = le.inverse_transform([smooth_idx])[0]
         confidence = float(proba[0][smooth_idx])
 
+        # ---------------------------------------------------------
+        # 🎯 HYBRID RULES: เอา Rule-based มาดักจับทับ AI อีกรอบ
+        # ---------------------------------------------------------
+        lms = results.pose_landmarks.landmark
+        
+        # กฎที่ 1: ดักจับส้นเท้าลอย
+        LEFT_HEEL, RIGHT_HEEL = 29, 30
+        LEFT_FOOT_INDEX, RIGHT_FOOT_INDEX = 31, 32
+        
+        heel_y = (lms[LEFT_HEEL].y + lms[RIGHT_HEEL].y) / 2
+        foot_y = (lms[LEFT_FOOT_INDEX].y + lms[RIGHT_FOOT_INDEX].y) / 2
+        
+        # ถ้าระดับ Y ของส้นเท้า อยู่สูงกว่าปลายเท้า (Y น้อย = อยู่ด้านบน)
+        if heel_y < foot_y - 0.015: 
+            label = "squat_bad_heel"
+
+        # กฎที่ 2: ดักจับหลังงอ
+        shoulder = [ (lms[11].x + lms[12].x)/2, (lms[11].y + lms[12].y)/2 ]
+        hip      = [ (lms[23].x + lms[24].x)/2, (lms[23].y + lms[24].y)/2 ]
+        knee     = [ (lms[25].x + lms[26].x)/2, (lms[25].y + lms[26].y)/2 ]
+        
+        back_angle = self._calculate_angle(shoulder, hip, knee)
+        
+        # ถ้าพับตัวลงมามากเกินไป ถือว่างอหลัง (ตัวเลข 60.0 ปรับจูนได้)
+        if back_angle < 60.0: 
+            label = "squat_bad_back"
+        # ---------------------------------------------------------
+
         # 4. update rep counter
         lm_list = self.landmarks_to_list(results.pose_landmarks)
         new_rep = self.counter.update(lm_list, label, confidence)
 
         cfg      = CLASS_CONFIG.get(label, DEFAULT_CONFIG)
-        feedback = cfg["feedback"] if (new_rep or label == "squat_bad_foot") else ""
+        feedback = cfg["feedback"] if (new_rep or label == "squat_bad_foot" or label != "squat_good") else ""
         proba_dict = {cls: float(proba[0][i]) for i, cls in enumerate(le.classes_)}
 
         return {
@@ -176,7 +214,7 @@ class SquatPredictor:
             "feedback":      feedback,
             "count_rep":     cfg["count_rep"],
             "proba":         proba_dict,
-            "landmarks":     lm_list,   # ส่งกลับให้ frontend วาด skeleton
+            "landmarks":     lm_list,
             **self.counter.to_dict(),
         }
 
