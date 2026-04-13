@@ -100,7 +100,8 @@ export function useExerciseWS(exercise, videoRef, overlayCanvasRef, active) {
 
     const W = canvas.width;
     const H = canvas.height;
-    const toXY = (lm) => ({ x: (1 - lm.x) * W, y: lm.y * H });
+    // โค้ดที่แก้ไขแล้ว
+const toXY = (lm) => ({ x: lm.x * W, y: lm.y * H });
 
     ctx.lineWidth   = 3;
     ctx.strokeStyle = color + "cc";
