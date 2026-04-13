@@ -69,7 +69,7 @@ async def pushup_websocket(websocket: WebSocket):
 
 
 
-@router.websocket("/ws/plank")
+@router.websocket("/exercise/plank")
 async def plank_exercise(websocket: WebSocket):
     await websocket.accept()
     predictor = PlankPredictor()
