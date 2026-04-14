@@ -77,11 +77,7 @@ export const EXERCISE_CONFIG = {
 };
 
 export function useExerciseWS(exercise, videoRef, overlayCanvasRef, active, isTracking = true) {
-  const isTrackingRef = useRef(isTracking);
 
-  useEffect(() => {
-    isTrackingRef.current = isTracking;
-  }, [isTracking]);
 
   const wsRef       = useRef(null);
   const intervalRef = useRef(null);
@@ -91,7 +87,8 @@ export function useExerciseWS(exercise, videoRef, overlayCanvasRef, active, isTr
   const [wsStatus, setWsStatus] = useState("disconnected");
 
   const cfg = EXERCISE_CONFIG[exercise] || EXERCISE_CONFIG.squat;
-
+const isTrackingRef = useRef(isTracking);
+  useEffect(() => { isTrackingRef.current = isTracking; }, [isTracking]); 
   // ── วาด skeleton ──────────────────────────────────────────────────────────
   const drawSkeleton = useCallback((landmarks, color) => {
     const canvas = overlayCanvasRef.current;
@@ -199,9 +196,9 @@ const toXY = (lm) => ({ x: lm.x * W, y: lm.y * H });
   const startSendLoop = useCallback(() => {
     clearInterval(intervalRef.current);
     intervalRef.current = setInterval(() => {
-      if (sendingRef.current) return;
+      if (!isTrackingRef.current || sendingRef.current) return;
       if (wsRef.current?.readyState !== WebSocket.OPEN) return;
-      if (!isTrackingRef.current) return;
+     
       const b64 = captureFrame();
       if (!b64) return;
       sendingRef.current = true;
@@ -217,47 +214,28 @@ const toXY = (lm) => ({ x: lm.x * W, y: lm.y * H });
   }, [clearCanvas]);
 
   // ── main effect ───────────────────────────────────────────────────────────
+// ── main effect ───────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!active) { disconnectWS(); return; }
+    if (active) {
+      connectWS(); // เชื่อม WebSocket อย่างเดียว ไม่ต้องเปิดกล้องใหม่แล้ว
+      
+      const t = setInterval(() => {
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+          clearInterval(t);
+          startSendLoop();
+        }
+      }, 200);
 
-    const video = videoRef.current;
-    if (!video) return;
-
-    const startAll = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 640, height: 480, facingMode: "user" },
-          audio: false,
-        });
-        video.srcObject = stream;
-        await new Promise((res) => { video.onloadedmetadata = res; });
-        await video.play();
-
-        connectWS();
-
-        const waitWS = setInterval(() => {
-          if (wsRef.current?.readyState === WebSocket.OPEN) {
-            clearInterval(waitWS);
-            startSendLoop();
-          }
-        }, 200);
-      } catch (err) {
-        console.error("Camera error:", err);
-        setWsStatus("error");
-      }
-    };
-
-    startAll();
-
-    return () => {
-      clearInterval(intervalRef.current);
-      if (video.srcObject) {
-        video.srcObject.getTracks().forEach((t) => t.stop());
-        video.srcObject = null;
-      }
+      return () => {
+        clearInterval(intervalRef.current);
+        disconnectWS();
+      };
+    } else {
       disconnectWS();
-    };
-  }, [active, exercise]);
+    }
+  }, [active, connectWS, startSendLoop, disconnectWS]);
 
   return { result, wsStatus, resetSession, cfg };
 }
+
+  

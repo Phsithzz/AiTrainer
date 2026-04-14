@@ -3,54 +3,88 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useExerciseWS } from "../hooks/useExerciseWS";
 
 export default function TrainPage({ onFinish }) {
-  const { exercise }   = useParams();
-  const navigate       = useNavigate();
-  const videoRef       = useRef(null);
-  const overlayRef     = useRef(null);
-  const [active, setActive]     = useState(false);
+  const { exercise } = useParams();
+  const navigate = useNavigate();
+  const videoRef = useRef(null);
+  const overlayRef = useRef(null);
+  const [hasPermission, setHasPermission] = useState(false);
+  const [active, setActive] = useState(false);
   const [finished, setFinished] = useState(false);
-const [isTracking, setIsTracking] = useState(false); 
-  const [countdown, setCountdown]   = useState(null);
+  const [isTracking, setIsTracking] = useState(false);
+  const [countdown, setCountdown] = useState(null);
   const { result, wsStatus, resetSession, cfg } = useExerciseWS(
-    exercise, videoRef, overlayRef, active, isTracking 
+    exercise,
+    videoRef,
+    overlayRef,
+    active,
+    isTracking,
   );
-useEffect(() => {
-    if (countdown === null) return;
-    
-    if (countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-      return () => clearTimeout(timer);
-    } else if (countdown === 0) {
-      setIsTracking(true); // พอเหลือ 0 ค่อยสั่งให้ AI เริ่มทำงาน
-      setCountdown(null);  // ซ่อนหน้าต่างนับถอยหลัง
-    }
-  }, [countdown]);
-  const handleStart = () => {
-    setActive(true);   // เปิดกล้อง+เชื่อม WebSocket ทันที
-    setCountdown(5);   // เริ่มนับ 5 วินาที
-  };
 
   const isTimer = cfg.mode === "timer";
-  const accent  = cfg.accent;
+  const accent = cfg.accent;
+  useEffect(() => {
+    const startCamera = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: 640, height: 480, facingMode: "user" },
+          audio: false,
+        });
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          setHasPermission(true);
+        }
+      } catch (err) {
+        console.error("Camera error:", err);
+        alert("กรุณาอนุญาตให้เข้าถึงกล้องเพื่อใช้งาน");
+      }
+    };
+    startCamera();
 
+    return () => {
+      // ปิดกล้องเมื่อออกจากหน้า
+      if (videoRef.current?.srcObject) {
+        videoRef.current.srcObject.getTracks().forEach((t) => t.stop());
+      }
+    };
+  }, []);
+
+  // 🟢 2. จัดการนับถอยหลัง
+  useEffect(() => {
+    if (countdown === null) return;
+    if (countdown > 0) {
+      const t = setTimeout(() => setCountdown(countdown - 1), 1000);
+      return () => clearTimeout(t);
+    } else {
+      setIsTracking(true); // เริ่ม Tracking เมื่อนับเสร็จ
+      setCountdown(null);
+    }
+  }, [countdown]);
+
+  // 🟢 3. ฟังก์ชันเมื่อกดเริ่ม
+  const handleStart = () => {
+    setActive(true); // เริ่มต่อ WebSocket
+    setCountdown(5); // เริ่มนับ 5 วินาที
+  };
   // ── ดึงค่าจาก result ──────────────────────────────────────────────────────
-  const label      = result?.label      || null;
-  const color      = label ? (cfg.labelColors[label] || accent) : accent;
-  const labelText  = label ? (cfg.labelText[label]   || "DETECTING...") : "DETECTING...";
-  const proba      = result?.proba       || {};
-  const conf       = result?.confidence  || 0;
-  const feedback   = result?.feedback    || "";
-  const poseOk     = result?.pose_detected ?? false;
-  const state      = result?.state       || "UP";
+  const label = result?.label || null;
+  const color = label ? cfg.labelColors[label] || accent : accent;
+  const labelText = label
+    ? cfg.labelText[label] || "DETECTING..."
+    : "DETECTING...";
+  const proba = result?.proba || {};
+  const conf = result?.confidence || 0;
+  const feedback = result?.feedback || "";
+  const poseOk = result?.pose_detected ?? false;
+  const state = result?.state || "UP";
 
   // reps mode
-  const reps  = result?.reps       || 0;
-  const good  = result?.good_count || 0;
-  const bad   = result?.bad_count  || 0;
+  const reps = result?.reps || 0;
+  const good = result?.good_count || 0;
+  const bad = result?.bad_count || 0;
 
   // timer mode (plank)
   const totalTime = result?.total_time || 0;
-  const isHolding = result?.is_holding  || false;
+  const isHolding = result?.is_holding || false;
 
   // pushup elbow angle
   const elbowAngle = result?.elbow_angle || null;
@@ -65,7 +99,10 @@ useEffect(() => {
     }
   }, [feedback, result?.reps, result?.total_time]);
 
-  const handleFinish = () => { setActive(false); setFinished(true); };
+  const handleFinish = () => {
+    setActive(false);
+    setFinished(true);
+  };
 
   const handleBack = () => {
     const sessionResult = isTimer
@@ -86,57 +123,89 @@ useEffect(() => {
     <div className="min-h-screen flex flex-col bg-[#0a0a0f]">
       {/* header */}
       <header className="flex items-center justify-between px-6 py-4 border-b border-white/5">
-        <button onClick={handleBack}
-          className="text-xs tracking-widest text-white/40 hover:text-white transition-colors">
+        <button
+          onClick={handleBack}
+          className="text-xs tracking-widest text-white/40 hover:text-white transition-colors"
+        >
           ← BACK
         </button>
 
         <div className="flex items-center gap-3">
-          <div className="w-2 h-2 rounded-full animate-pulse" style={{
-            backgroundColor:
-              wsStatus === "connected"  ? accent :
-              wsStatus === "connecting" ? "#ff9500" : "#ff3b30",
-          }} />
-          <span className="text-xs tracking-widest text-white/30 uppercase">{wsStatus}</span>
+          <div
+            className="w-2 h-2 rounded-full animate-pulse"
+            style={{
+              backgroundColor:
+                wsStatus === "connected"
+                  ? accent
+                  : wsStatus === "connecting"
+                    ? "#ff9500"
+                    : "#ff3b30",
+            }}
+          />
+          <span className="text-xs tracking-widest text-white/30 uppercase">
+            {wsStatus}
+          </span>
         </div>
 
-        <span className="text-xs tracking-[0.3em] font-black px-3 py-1 rounded"
-          style={{ color: accent, border: `1px solid ${accent}40` }}>
+        <span
+          className="text-xs tracking-[0.3em] font-black px-3 py-1 rounded"
+          style={{ color: accent, border: `1px solid ${accent}40` }}
+        >
           {exercise?.toUpperCase()}
         </span>
       </header>
 
       <div className="flex-1 flex flex-col lg:flex-row">
-
         {/* ── Camera ── */}
         <div className="relative flex-1 p-4 lg:p-8 bg-black flex items-center justify-center min-h-90">
-          <div className="relative w-full max-w-5xl aspect-4/3 bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10 flex items-center justify-center">
-
-            <video ref={videoRef} autoPlay muted playsInline
+          <div className="relative w-full max-w-5xl aspect-video bg-black rounded-xl overflow-hidden shadow-2xl border-4 border-white  flex items-center justify-center">
+            <video
+              ref={videoRef}
+              autoPlay
+              muted
+              playsInline
               className="w-full h-full object-cover"
-              style={{ transform: "scaleX(-1)" }} />
+              style={{ transform: "scaleX(-1)" }}
+            />
 
-            <canvas ref={overlayRef}
+            <canvas
+              ref={overlayRef}
               className="absolute inset-0 w-full h-full pointer-events-none"
-              style={{ transform: "scaleX(-1)" }} />
+              style={{ transform: "scaleX(-1)" }}
+            />
 
             {/* START overlay */}
-            {!active && !finished && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/85 z-20">
-                <div className="text-5xl mb-6">
-                  {exercise === "squat" ? "🏋️" : exercise === "pushup" ? "💪" : "🧘"}
+            {/* START overlay */}
+            {!active && !finished && hasPermission && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 z-20 backdrop-blur-[2px]">
+                <div className="text-white mb-6 text-center">
+                  <p className="text-sm tracking-widest opacity-80 font-black">
+                    CAMERA READY
+                  </p>
+                  <p className="text-xs opacity-60 mt-2">
+                    ยืนให้เต็มกล้องและจัดตำแหน่งให้พร้อม
+                  </p>
                 </div>
-                <p className="text-white/50 text-sm tracking-widest mb-2 text-center px-8">
-                  {exercise?.toUpperCase()} — AI Trainer
-                </p>
-                <p className="text-white/30 text-xs tracking-widest mb-8 text-center">
-                  {isTimer ? "จับเวลาเฉพาะตอนทำท่าถูกต้อง" : "นับ rep อัตโนมัติ"}
-                </p>
-                <button onClick={handleStart}
-                  className="px-10 py-4 text-sm tracking-[0.3em] font-black rounded-xl transition-all active:scale-95"
-                  style={{ background: `linear-gradient(135deg, ${accent}, ${accent}aa)`, color: "#000" }}>
-                  START SESSION
+                <button
+                  onClick={handleStart}
+                  className="px-10 py-4 text-sm tracking-[0.3em] font-black rounded-xl transition-all active:scale-95 hover:scale-105 shadow-[0_0_20px_rgba(0,0,0,0.5)]"
+                  style={{
+                    background: `linear-gradient(135deg, ${accent}, ${accent}aa)`,
+                    color: "#000",
+                  }}
+                >
+                  START WORKOUT
                 </button>
+              </div>
+            )}
+
+            {/* Loading overlay (ตอนรอผู้ใช้กด Allow อนุญาตกล้อง) */}
+            {!active && !finished && !hasPermission && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-20">
+                <div className="w-8 h-8 border-4 border-white/20 border-t-white rounded-full animate-spin mb-4"></div>
+                <div className="text-white/50 text-xs tracking-widest uppercase">
+                  Waiting for camera...
+                </div>
               </div>
             )}
 
@@ -144,30 +213,52 @@ useEffect(() => {
             {finished && (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-20">
                 <div className="text-5xl mb-4">🏁</div>
-                <div className="text-2xl font-black text-white mb-2">SESSION DONE</div>
-                <div className="text-white/40 text-xs tracking-widest mb-8">ผลลัพธ์ถูกบันทึกแล้ว</div>
+                <div className="text-2xl font-black text-white mb-2">
+                  SESSION DONE
+                </div>
+                <div className="text-white/40 text-xs tracking-widest mb-8">
+                  ผลลัพธ์ถูกบันทึกแล้ว
+                </div>
 
                 {isTimer ? (
                   <div className="text-center mb-8">
-                    <div className="text-5xl font-black" style={{ color: accent }}>
+                    <div
+                      className="text-5xl font-black"
+                      style={{ color: accent }}
+                    >
                       {formatTime(totalTime)}
                     </div>
-                    <div className="text-xs tracking-widest text-white/30 mt-2">SECONDS (GOOD FORM)</div>
+                    <div className="text-xs tracking-widest text-white/30 mt-2">
+                      SECONDS (GOOD FORM)
+                    </div>
                   </div>
                 ) : (
                   <div className="flex gap-8 mb-8">
-                    {[["REPS", reps, "#fff"], ["GOOD", good, "#00ff88"], ["BAD", bad, "#ff9500"]].map(([l, v, c]) => (
+                    {[
+                      ["REPS", reps, "#fff"],
+                      ["GOOD", good, "#00ff88"],
+                      ["BAD", bad, "#ff9500"],
+                    ].map(([l, v, c]) => (
                       <div key={l} className="text-center">
-                        <div className="text-3xl font-black" style={{ color: c }}>{v}</div>
-                        <div className="text-[10px] tracking-widest text-white/30 mt-1">{l}</div>
+                        <div
+                          className="text-3xl font-black"
+                          style={{ color: c }}
+                        >
+                          {v}
+                        </div>
+                        <div className="text-[10px] tracking-widest text-white/30 mt-1">
+                          {l}
+                        </div>
                       </div>
                     ))}
                   </div>
                 )}
 
-                <button onClick={handleBack}
+                <button
+                  onClick={handleBack}
                   className="px-8 py-3 text-sm tracking-widest text-black font-black rounded-lg"
-                  style={{ background: accent }}>
+                  style={{ background: accent }}
+                >
                   BACK TO HOME
                 </button>
               </div>
@@ -176,8 +267,14 @@ useEffect(() => {
             {/* status badge */}
             {active && (
               <div className="absolute top-4 left-4 z-10">
-                <div className="px-4 py-2 rounded-lg backdrop-blur-sm text-sm font-black tracking-wider transition-all duration-300"
-                  style={{ backgroundColor: color + "25", border: `1px solid ${color}60`, color }}>
+                <div
+                  className="px-4 py-2 rounded-lg backdrop-blur-sm text-sm font-black tracking-wider transition-all duration-300"
+                  style={{
+                    backgroundColor: color + "25",
+                    border: `1px solid ${color}60`,
+                    color,
+                  }}
+                >
                   {poseOk ? labelText : "NO POSE"}
                 </div>
               </div>
@@ -186,8 +283,14 @@ useEffect(() => {
             {/* confidence bar */}
             {active && poseOk && (
               <div className="absolute top-0 left-0 right-0 h-1 bg-white/10 z-10">
-                <div className="h-full transition-all duration-300"
-                  style={{ width: `${conf * 100}%`, backgroundColor: color, boxShadow: `0 0 8px ${color}` }} />
+                <div
+                  className="h-full transition-all duration-300"
+                  style={{
+                    width: `${conf * 100}%`,
+                    backgroundColor: color,
+                    boxShadow: `0 0 8px ${color}`,
+                  }}
+                />
               </div>
             )}
 
@@ -202,16 +305,30 @@ useEffect(() => {
                 )}
                 {/* plank: จับเวลาอยู่ */}
                 {isTimer && isHolding && (
-                  <div className="text-xs tracking-widest bg-black/50 px-3 py-1.5 rounded backdrop-blur-sm flex items-center gap-2"
-                    style={{ color: accent }}>
-                    <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: accent }} />
+                  <div
+                    className="text-xs tracking-widest bg-black/50 px-3 py-1.5 rounded backdrop-blur-sm flex items-center gap-2"
+                    style={{ color: accent }}
+                  >
+                    <div
+                      className="w-1.5 h-1.5 rounded-full animate-pulse"
+                      style={{ backgroundColor: accent }}
+                    />
                     HOLDING
                   </div>
                 )}
                 {/* pushup: แสดงมุมข้อศอก */}
                 {exercise === "pushup" && elbowAngle !== null && (
-                  <div className="text-xs tracking-widest bg-black/50 px-3 py-1.5 rounded backdrop-blur-sm"
-                    style={{ color: elbowAngle <= 100 ? "#ff3b30" : elbowAngle >= 155 ? "#00ff88" : "#ff9500" }}>
+                  <div
+                    className="text-xs tracking-widest bg-black/50 px-3 py-1.5 rounded backdrop-blur-sm"
+                    style={{
+                      color:
+                        elbowAngle <= 100
+                          ? "#ff3b30"
+                          : elbowAngle >= 155
+                            ? "#00ff88"
+                            : "#ff9500",
+                    }}
+                  >
                     ELBOW {Math.round(elbowAngle)}°
                   </div>
                 )}
@@ -221,8 +338,15 @@ useEffect(() => {
             {/* flash feedback */}
             {flash && (
               <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-                <div className="px-8 py-4 rounded-2xl backdrop-blur-sm text-2xl font-black tracking-wide"
-                  style={{ backgroundColor: color + "30", border: `2px solid ${color}`, color: "#fff", textShadow: `0 0 20px ${color}` }}>
+                <div
+                  className="px-8 py-4 rounded-2xl backdrop-blur-sm text-2xl font-black tracking-wide"
+                  style={{
+                    backgroundColor: color + "30",
+                    border: `2px solid ${color}`,
+                    color: "#fff",
+                    textShadow: `0 0 20px ${color}`,
+                  }}
+                >
                   {flash}
                 </div>
               </div>
@@ -240,11 +364,15 @@ useEffect(() => {
             {active && countdown !== null && countdown > 0 && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/60 z-30 backdrop-blur-sm">
                 <div className="flex flex-col items-center">
-                  <div className="text-[12rem] font-black text-white leading-none animate-pulse" 
-                       style={{ textShadow: `0 0 60px ${accent}` }}>
+                  <div
+                    className="text-[12rem] font-black text-white leading-none animate-pulse"
+                    style={{ textShadow: `0 0 60px ${accent}` }}
+                  >
                     {countdown}
                   </div>
-                  <div className="text-white/60 tracking-[0.5em] font-black mt-4">GET READY</div>
+                  <div className="text-white/60 tracking-[0.5em] font-black mt-4">
+                    GET READY
+                  </div>
                 </div>
               </div>
             )}
@@ -253,49 +381,74 @@ useEffect(() => {
 
         {/* ── Stats sidebar ── */}
         <div className="w-full lg:w-80 bg-[#0d0d14] border-t lg:border-t-0 lg:border-l border-white/5 flex flex-col">
-
           {/* main stat */}
           <div className="p-6 border-b border-white/5 text-center">
             {isTimer ? (
               /* plank — timer */
               <>
-                <div className="text-xs tracking-[0.4em] text-white/30 mb-2">HOLD TIME</div>
-                <div className="text-6xl font-black leading-none transition-all duration-200 mb-2"
+                <div className="text-xs tracking-[0.4em] text-white/30 mb-2">
+                  HOLD TIME
+                </div>
+                <div
+                  className="text-6xl font-black leading-none transition-all duration-200 mb-2"
                   style={{
                     fontFamily: "'Arial Black', sans-serif",
                     color: totalTime > 0 ? "#fff" : "#333",
                     textShadow: isHolding ? `0 0 40px ${accent}60` : "none",
-                  }}>
+                  }}
+                >
                   {formatTime(totalTime)}
                 </div>
-                <div className="text-xs tracking-widest text-white/20 mb-4">SECONDS</div>
-                <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs tracking-widest transition-all ${isHolding ? "opacity-100" : "opacity-30"}`}
-                  style={{ backgroundColor: accent + "20", color: accent, border: `1px solid ${accent}40` }}>
-                  <div className={`w-1.5 h-1.5 rounded-full ${isHolding ? "animate-pulse" : ""}`}
-                    style={{ backgroundColor: accent }} />
+                <div className="text-xs tracking-widest text-white/20 mb-4">
+                  SECONDS
+                </div>
+                <div
+                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs tracking-widest transition-all ${isHolding ? "opacity-100" : "opacity-30"}`}
+                  style={{
+                    backgroundColor: accent + "20",
+                    color: accent,
+                    border: `1px solid ${accent}40`,
+                  }}
+                >
+                  <div
+                    className={`w-1.5 h-1.5 rounded-full ${isHolding ? "animate-pulse" : ""}`}
+                    style={{ backgroundColor: accent }}
+                  />
                   {isHolding ? "HOLDING" : "REST"}
                 </div>
               </>
             ) : (
               /* squat/pushup — reps */
               <>
-                <div className="text-xs tracking-[0.4em] text-white/30 mb-2">REPS</div>
-                <div className="text-8xl font-black leading-none transition-all duration-200"
+                <div className="text-xs tracking-[0.4em] text-white/30 mb-2">
+                  REPS
+                </div>
+                <div
+                  className="text-8xl font-black leading-none transition-all duration-200"
                   style={{
                     fontFamily: "'Arial Black', sans-serif",
                     color: reps > 0 ? "#fff" : "#333",
                     textShadow: reps > 0 ? `0 0 40px ${accent}60` : "none",
-                  }}>
+                  }}
+                >
                   {reps}
                 </div>
                 <div className="flex gap-3 mt-4">
                   <div className="flex-1 rounded-lg bg-white/5 py-3">
-                    <div className="text-[10px] tracking-widest text-[#00ff88]/60 mb-1">GOOD</div>
-                    <div className="text-2xl font-black text-[#00ff88]">{good}</div>
+                    <div className="text-[10px] tracking-widest text-[#00ff88]/60 mb-1">
+                      GOOD
+                    </div>
+                    <div className="text-2xl font-black text-[#00ff88]">
+                      {good}
+                    </div>
                   </div>
                   <div className="flex-1 rounded-lg bg-white/5 py-3">
-                    <div className="text-[10px] tracking-widest text-[#ff9500]/60 mb-1">BAD</div>
-                    <div className="text-2xl font-black text-[#ff9500]">{bad}</div>
+                    <div className="text-[10px] tracking-widest text-[#ff9500]/60 mb-1">
+                      BAD
+                    </div>
+                    <div className="text-2xl font-black text-[#ff9500]">
+                      {bad}
+                    </div>
                   </div>
                 </div>
               </>
@@ -304,22 +457,33 @@ useEffect(() => {
 
           {/* probability bars */}
           <div className="p-6 border-b border-white/5 flex-1">
-            <div className="text-[10px] tracking-[0.4em] text-white/20 mb-4">CONFIDENCE</div>
+            <div className="text-[10px] tracking-[0.4em] text-white/20 mb-4">
+              CONFIDENCE
+            </div>
             {cfg.probaKeys.map(({ key, label: lbl, color: c }) => (
               <div key={key} className="mb-4">
                 <div className="flex justify-between items-center mb-1.5">
-                  <span className="text-[10px] tracking-widest font-medium" style={{ color: c }}>{lbl}</span>
+                  <span
+                    className="text-[10px] tracking-widest font-medium"
+                    style={{ color: c }}
+                  >
+                    {lbl}
+                  </span>
                   <span className="text-[10px] text-white/30">
-                    {proba[key] != null ? `${(proba[key] * 100).toFixed(0)}%` : "–"}
+                    {proba[key] != null
+                      ? `${(proba[key] * 100).toFixed(0)}%`
+                      : "–"}
                   </span>
                 </div>
                 <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                  <div className="h-full rounded-full transition-all duration-300"
+                  <div
+                    className="h-full rounded-full transition-all duration-300"
                     style={{
                       width: `${(proba[key] || 0) * 100}%`,
                       backgroundColor: c,
                       boxShadow: label === key ? `0 0 8px ${c}` : "none",
-                    }} />
+                    }}
+                  />
                 </div>
               </div>
             ))}
@@ -327,24 +491,44 @@ useEffect(() => {
             {/* pushup extra: elbow angle gauge */}
             {exercise === "pushup" && elbowAngle !== null && (
               <div className="mt-4 pt-4 border-t border-white/5">
-                <div className="text-[10px] tracking-[0.4em] text-white/20 mb-3">ELBOW ANGLE</div>
+                <div className="text-[10px] tracking-[0.4em] text-white/20 mb-3">
+                  ELBOW ANGLE
+                </div>
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-[10px] text-white/30">0°</span>
-                  <span className="text-sm font-black"
-                    style={{ color: elbowAngle <= 100 ? "#ff3b30" : elbowAngle >= 155 ? "#00ff88" : "#ff9500" }}>
+                  <span
+                    className="text-sm font-black"
+                    style={{
+                      color:
+                        elbowAngle <= 100
+                          ? "#ff3b30"
+                          : elbowAngle >= 155
+                            ? "#00ff88"
+                            : "#ff9500",
+                    }}
+                  >
                     {Math.round(elbowAngle)}°
                   </span>
                   <span className="text-[10px] text-white/30">180°</span>
                 </div>
                 <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-                  <div className="h-full rounded-full transition-all duration-150"
+                  <div
+                    className="h-full rounded-full transition-all duration-150"
                     style={{
                       width: `${(elbowAngle / 180) * 100}%`,
-                      backgroundColor: elbowAngle <= 100 ? "#ff3b30" : elbowAngle >= 155 ? "#00ff88" : "#ff9500",
-                    }} />
+                      backgroundColor:
+                        elbowAngle <= 100
+                          ? "#ff3b30"
+                          : elbowAngle >= 155
+                            ? "#00ff88"
+                            : "#ff9500",
+                    }}
+                  />
                 </div>
                 <div className="flex justify-between mt-1">
-                  <span className="text-[9px] text-[#ff3b30]/60">DOWN ≤100°</span>
+                  <span className="text-[9px] text-[#ff3b30]/60">
+                    DOWN ≤100°
+                  </span>
                   <span className="text-[9px] text-[#00ff88]/60">UP ≥155°</span>
                 </div>
               </div>
@@ -355,24 +539,25 @@ useEffect(() => {
           <div className="p-6 flex flex-col gap-3">
             {active && (
               <>
-                <button onClick={resetSession}
-                  className="w-full py-3 text-xs tracking-widest text-white/50 border border-white/10 rounded-lg hover:border-white/30 hover:text-white transition-all">
+                <button
+                  onClick={resetSession}
+                  className="w-full py-3 text-xs tracking-widest text-white/50 border border-white/10 rounded-lg hover:border-white/30 hover:text-white transition-all"
+                >
                   RESET
                 </button>
-                <button onClick={handleFinish}
+                <button
+                  onClick={handleFinish}
                   className="w-full py-3 text-xs tracking-widest font-black rounded-lg"
-                  style={{ background: `linear-gradient(135deg, ${accent}, ${accent}aa)`, color: "#000" }}>
+                  style={{
+                    background: `linear-gradient(135deg, ${accent}, ${accent}aa)`,
+                    color: "#000",
+                  }}
+                >
                   FINISH SESSION
                 </button>
               </>
             )}
-            {!active && !finished && (
-              <button onClick={handleStart}
-                className="w-full py-3 text-xs tracking-widest font-black rounded-lg"
-                style={{ background: accent, color: "#000" }}>
-                START
-              </button>
-            )}
+            
           </div>
         </div>
       </div>
