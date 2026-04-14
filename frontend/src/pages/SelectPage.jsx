@@ -82,9 +82,11 @@ export default function SelectPage({ sessions }) {
       {/* header */}
       <header className="relative z-10 flex items-center justify-between px-8 py-6 border-b border-white/5">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-sm bg-white flex items-center justify-center">
-            <span className="text-black text-xs font-black">AI</span>
-          </div>
+          <button className="w-8 h-8 rounded-sm bg-white flex items-center justify-center border-black
+          hover:bg-black hover:border-white hover:text-white text-black font-semibold
+          transition-color duration-300 ease-in cursor-pointer">
+            AI
+          </button>
           <span className="text-sm tracking-[0.3em] text-white/60 uppercase">Form Trainer</span>
         </div>
         <div className="flex items-center gap-6">
