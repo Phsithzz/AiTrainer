@@ -189,7 +189,7 @@ const toXY = (lm) => ({ x: lm.x * W, y: lm.y * H });
     wsRef.current      = null;
     sendingRef.current = false;
     setWsStatus("disconnected");
-    setResult(null);
+    
     clearCanvas();
   }, [clearCanvas]);
 
@@ -214,7 +214,7 @@ const toXY = (lm) => ({ x: lm.x * W, y: lm.y * H });
   }, [clearCanvas]);
 
   // ── main effect ───────────────────────────────────────────────────────────
-// ── main effect ───────────────────────────────────────────────────────────
+
   useEffect(() => {
     if (active) {
       connectWS(); // เชื่อม WebSocket อย่างเดียว ไม่ต้องเปิดกล้องใหม่แล้ว
