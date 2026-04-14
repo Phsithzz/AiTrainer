@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import SelectPage  from "./pages/SelectPage";
 import TrainPage   from "./pages/TrainPage";
 import HistoryPage from "./pages/HistoryPage";
+import NotFoundPage from "./pages/NotFoundPage";
 
 export default function App() {
   const [sessions, setSessions] = useState([]);
@@ -17,12 +18,12 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-[#0a0a0f] text-white font-mono overflow-x-hidden">
+      <div className="min-h-screen bg-black text-white font-mono overflow-x-hidden">
         <Routes>
           <Route path="/"               element={<SelectPage  sessions={sessions} />} />
           <Route path="/train/:exercise" element={<TrainPage   onFinish={addSession} />} />
           <Route path="/history"         element={<HistoryPage sessions={sessions} />} />
-          <Route path="*"               element={<Navigate to="/" replace />} />
+          <Route path="*"               element={<NotFoundPage />} />
         </Routes>
       </div>
     </BrowserRouter>
