@@ -1,12 +1,15 @@
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-
+import { GrNext } from "react-icons/gr";
+import plank_mode from "../assets/images/plank_mode.png"
+import squat_mode from "../assets/images/squat_mode.jpg"
+import push_up_mode from "../assets/images/pushmode.png"
 const EXERCISES = [
   {
     id:        "squat",
     label:     "SQUAT",
     thai:      "สควอท",
-    icon:      "🏋️",
+    icon:      squat_mode,
     desc:      "ฝึกกล้ามเนื้อขาและสะโพก",
     available: true,
     accent:    "#00ff88",
@@ -16,7 +19,7 @@ const EXERCISES = [
     id:        "pushup",
     label:     "PUSH UP",
     thai:      "วิดพื้น",
-    icon:      "💪",
+    icon:      push_up_mode,
     desc:      "ฝึกกล้ามเนื้อหน้าอกและแขน",
     available: true,
     accent:    "#ff6b35",
@@ -26,7 +29,7 @@ const EXERCISES = [
     id:        "plank",
     label:     "PLANK",
     thai:      "แพลงก์",
-    icon:      "🧘",
+    icon:      plank_mode,
     desc:      "เสริมความแข็งแรงของแกนกลางลำตัว",
     available: true,
     accent:    "#a855f7",
@@ -80,24 +83,30 @@ export default function SelectPage({ sessions }) {
       <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" />
 
       {/* header */}
-      <header className="relative z-10 flex items-center justify-between px-8 py-6 border-b border-white/5">
+      <header className="relative z-10 flex items-center justify-between px-8 py-6 border-b-2 border-white ">
         <div className="flex items-center gap-3">
           <button className="w-8 h-8 rounded-sm bg-white flex items-center justify-center border-black
           hover:bg-black hover:border-white hover:text-white text-black font-semibold
-          transition-color duration-300 ease-in cursor-pointer">
+          transition duration-300 ease-in cursor-pointer">
             AI
           </button>
           <span className="text-sm tracking-[0.3em] text-white/60 uppercase">Form Trainer</span>
         </div>
         <div className="flex items-center gap-6">
-          {sessions.length > 0 && (
+          {/* {sessions.length > 0 && (
             <div className="flex items-center gap-4 text-xs text-white/30">
               <span><span className="text-white">{totalReps}</span> REPS</span>
               <span><span className="text-white">{totalTime.toFixed(0)}s</span> PLANK</span>
             </div>
-          )}
+          )} */}
           <button onClick={() => navigate("/history")}
-            className="text-xs tracking-widest text-white/40 hover:text-white transition-colors border border-white/10 hover:border-white/30 px-4 py-2 rounded">
+            className="text-xs tracking-widest text-white/60 cursor-pointer 
+            hover:text-white 
+            transition-colors 
+            border border-white 
+            hover:border-white/30 px-4 py-2 rounded
+            shadow-[2px_2px_0px_white]
+            ">
             HISTORY
           </button>
         </div>
@@ -105,16 +114,16 @@ export default function SelectPage({ sessions }) {
 
       {/* hero */}
       <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 py-12">
-        <div className="mb-2 text-white/30 text-xs tracking-[0.5em] uppercase">AI-Powered</div>
+        <div className="mb-2 text-white/50 text-xs tracking-[0.5em] uppercase">AI-Powered</div>
         <h1 className="text-center mb-4">
-          <span className="block text-6xl md:text-8xl font-black tracking-tight text-white leading-none"
-            style={{ fontFamily: "'Arial Black', sans-serif" }}>WORKOUT</span>
-          <span className="block text-6xl md:text-8xl font-black tracking-tight leading-none"
-            style={{ fontFamily: "'Arial Black', sans-serif", WebkitTextStroke: "2px #ffffff60", color: "transparent" }}>
+          <span className="block text-6xl md:text-8xl font-black tracking-[0.15em] text-white "
+           >WORKOUT</span>
+          <span className="block text-6xl md:text-8xl font-black tracking-[0.2em] "
+            style={{  WebkitTextStroke: "2px #ffffff60", color: "transparent" }}>
             TRAINER
           </span>
         </h1>
-        <p className="text-white/20 text-sm tracking-widest mb-16 text-center">
+        <p className="text-white/50 text-sm tracking-widest mb-16 text-center">
           เลือกท่าออกกำลังกาย — AI วิเคราะห์ฟอร์มแบบ real-time
         </p>
 
@@ -130,21 +139,21 @@ export default function SelectPage({ sessions }) {
         </div>
       </div>
 
-      <div className="relative z-10 flex items-center justify-center gap-8 py-4 border-t border-white/5 text-[10px] text-white/15 tracking-widest">
-        <span>MEDIAPIPE</span>
-        <span className="w-1 h-1 rounded-full bg-white/15" />
-        <span>SKLEARN</span>
-        <span className="w-1 h-1 rounded-full bg-white/15" />
-        <span>FASTAPI WEBSOCKET</span>
+      <div className="relative z-10 flex items-center justify-center gap-8 py-4 border-t-2 border-white text-[10px] text-white/15 tracking-widest">
+        <span className="text-white font-semibold tracking-[0.2em]">MEDIAPIPE</span>
+        <span className="w-1 h-1 rounded-full bg-white/60" />
+        <span className="text-white font-semibold tracking-[0.2em]">SKLEARN</span>
+        <span className="w-1 h-1 rounded-full bg-white/60" />
+        <span className="text-white font-semibold tracking-[0.2em]">FASTAPI WEBSOCKET</span>
       </div>
     </div>
   );
 }
 
-function ExerciseCard({ ex, onSelect, sessionCount }) {
+function ExerciseCard({ ex, onSelect }) {
   return (
     <div onClick={onSelect}
-      className="group relative border border-white/10 hover:border-white/30 cursor-pointer bg-white/[0.02] hover:bg-white/[0.05] rounded-xl p-6 transition-all duration-300 overflow-hidden">
+      className="group relative border border-white/10 hover:border-white/30 cursor-pointer bg-white/2 hover:bg-white/1 rounded-xl p-6 transition-all duration-300 overflow-hidden">
 
       {/* glow */}
       <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none rounded-xl"
@@ -155,8 +164,8 @@ function ExerciseCard({ ex, onSelect, sessionCount }) {
         style={{ background: `linear-gradient(225deg, ${ex.accent} 0%, transparent 60%)` }} />
 
       <div className="relative z-10">
-        <div className="text-3xl mb-4">{ex.icon}</div>
-
+       
+<img src={ex.icon} alt={ex.label} className="w-20 h-20"/>
         <div className="flex items-start justify-between mb-1">
           <div>
             <div className="text-2xl font-black tracking-tight transition-colors"
@@ -174,12 +183,10 @@ function ExerciseCard({ ex, onSelect, sessionCount }) {
         <p className="text-white/30 text-xs mt-3 mb-4 leading-relaxed">{ex.desc}</p>
 
         <div className="flex items-center justify-between">
-          <span className="text-[10px] text-white/20">
-            {sessionCount > 0 ? `${sessionCount} sessions` : "ยังไม่เคยฝึก"}
-          </span>
-          <span className="text-[10px] tracking-widest px-3 py-1.5 rounded border transition-colors"
+
+          <span className="flex items-center gap-2 text-[10px] tracking-widest px-3 py-1.5 rounded border transition-colors"
             style={{ borderColor: `${ex.accent}40`, color: ex.accent }}>
-            START →
+            START <GrNext />
           </span>
         </div>
       </div>
