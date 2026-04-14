@@ -13,6 +13,8 @@ print(f"✓ โหลด pushup model สำเร็จ | classes: {le.classes_
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
+# ── Config ────────────────────────────────────────────────────────────────────
+
 CLASS_CONFIG = {
     "pushup_good":     {"feedback": "",           "count_rep": True},
     "pushup_bad_neck": {"feedback": "คอก้มเกิน!", "count_rep": True},
@@ -22,8 +24,10 @@ DEFAULT_CONFIG = {"feedback": "", "count_rep": False}
 
 SMOOTH_N        = 7
 GOOD_THRESHOLD  = 0.60
-ELBOW_DOWN_DEG  = 100
-ELBOW_UP_DEG    = 155
+
+# 🟢 1. ปรับองศาให้กว้างขึ้น (ลดความเข้มงวดลง)
+ELBOW_DOWN_DEG  = 115  # เดิม 100 (ถ้าลงแล้วตัวเลขหน้าจอน้อยกว่า 115 จะถือว่าลงสุด)
+ELBOW_UP_DEG    = 140  # เดิม 155 (ถ้าดันขึ้นแล้วตัวเลขมากกว่า 140 จะถือว่าขึ้นสุด)
 
 # landmark index
 LEFT_WRIST    = 15
@@ -38,7 +42,10 @@ class RepCounter:
         self.state      = "UP"
         self.good_count = 0
         self.bad_count  = 0
-        self.last_label = None
+        
+        # 🟢 2. เพิ่มระบบ "จำท่าผิด" เหมือน Squat
+        self.is_bad_rep = False
+        self.bad_label_memory = None
 
     def _elbow_angle(self, landmarks: list) -> float | None:
         try:
@@ -53,27 +60,41 @@ class RepCounter:
             return None
 
     def update(self, landmarks: list, label: str, confidence: float) -> bool:
-        angle = self._elbow_angle(landmarks)
-        if angle is None:
-            return False
+            angle = self._elbow_angle(landmarks)
+            if angle is None:
+                return False
 
-        new_rep = False
+            new_rep = False
 
-        if self.state == "UP" and angle <= ELBOW_DOWN_DEG:
-            self.state      = "DOWN"
-            self.last_label = label
+            if self.state == "UP" and angle <= ELBOW_DOWN_DEG:
+                # จังหวะลงสุด (เริ่ม Rep)
+                self.state = "DOWN"
+                self.is_bad_rep = False
+                self.bad_label_memory = None
 
-        elif self.state == "DOWN" and angle >= ELBOW_UP_DEG:
-            self.state = "UP"
-            if confidence >= GOOD_THRESHOLD:
-                self.count += 1
-                new_rep = True
-                if self.last_label == "pushup_good":
-                    self.good_count += 1
+            elif self.state == "DOWN":
+                if angle < ELBOW_UP_DEG:
+                    # ระหว่างที่ยังขึ้นไม่สุด ถ้ามีจังหวะไหนท่าเสีย ให้จำไว้
+                    if label != "pushup_good" and confidence >= GOOD_THRESHOLD:
+                        self.is_bad_rep = True
+                        self.bad_label_memory = label
                 else:
-                    self.bad_count += 1
+                    # จังหวะดันขึ้นสุด (จบ Rep)
+                    self.state = "UP"
+                    
+                    # ตัดสินผลจากความจำระหว่างทำ Rep
+                    final_label = self.bad_label_memory if self.is_bad_rep else "pushup_good"
+                    cfg = CLASS_CONFIG.get(final_label, DEFAULT_CONFIG)
 
-        return new_rep
+                    if cfg["count_rep"]:
+                        new_rep = True
+                        if final_label == "pushup_good":
+                            self.count += 1       # ✅ นับเข้าตัวเลข REPS หลัก เฉพาะ Good
+                            self.good_count += 1
+                        else:
+                            self.bad_count += 1    # ❌ ท่าผิด ไม่นับเข้า REPS หลัก แต่นับสถิติ BAD
+                            
+            return new_rep
 
     def reset(self):
         self.__init__()
