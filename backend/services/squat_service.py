@@ -35,13 +35,18 @@ RIGHT_KNEE = 26
 
 # ── Rep Counter ───────────────────────────────────────────────────────────────
 
+# ── Rep Counter ───────────────────────────────────────────────────────────────
+
 class RepCounter:
     def __init__(self):
         self.count      = 0
         self.state      = "UP"
         self.good_count = 0
         self.bad_count  = 0
-        self.last_label = None
+        
+        # 🟢 เพิ่ม 2 ตัวแปรนี้เพื่อจำว่าระหว่างที่ลงไป ท่าเสียหรือไม่
+        self.is_bad_rep = False
+        self.bad_label_memory = None
 
     def update(self, landmarks_list: list, label: str, confidence: float) -> bool:
         hip_y  = (landmarks_list[LEFT_HIP]["y"]  + landmarks_list[RIGHT_HIP]["y"])  / 2
@@ -51,22 +56,34 @@ class RepCounter:
         new_rep = False
 
         if self.state == "UP" and is_down:
-            self.state      = "DOWN"
-            self.last_label = label
+            # 1. จังหวะเริ่มลง (เปลี่ยนจากยืนเป็นนั่ง)
+            self.state = "DOWN"
+            # รีเซ็ตความจำใหม่ทุกครั้งที่เริ่ม Rep
+            self.is_bad_rep = False
+            self.bad_label_memory = None
+            
+        elif self.state == "DOWN":
+            if is_down:
+                # 2. จังหวะกำลังนั่งอยู่ (Hold)
+                # ถ้าเจอท่าที่ผิดระหว่างนี้ ให้ "จำ" ไว้เลยว่า Rep นี้เสียแล้ว
+                if label != "squat_good" and confidence >= GOOD_THRESHOLD:
+                    self.is_bad_rep = True
+                    self.bad_label_memory = label
+            else:
+                # 3. จังหวะยืนขึ้น (เปลี่ยนจากนั่งเป็นยืน = จบ Rep)
+                self.state = "UP"
+                
+                # ตัดสินผลลัพธ์ของ Rep นี้จากความจำ
+                final_label = self.bad_label_memory if self.is_bad_rep else "squat_good"
+                cfg = CLASS_CONFIG.get(final_label, DEFAULT_CONFIG)
 
-        elif self.state == "DOWN" and not is_down:
-            self.state = "UP"
-            cfg = CLASS_CONFIG.get(self.last_label, DEFAULT_CONFIG)
-
-            if not cfg["count_rep"]:
-                pass
-            elif confidence >= GOOD_THRESHOLD:
-                new_rep = True
-                if self.last_label == "squat_good":
-                    self.count += 1         # ✅ ย้ายมาตรงนี้: บวก Rep หลักเฉพาะตอนทำถูกต้องเท่านั้น
-                    self.good_count += 1    # ✅ บวกสถิติ Good
-                else:
-                    self.bad_count += 1     # ❌ ถ้าทำผิด บวกแค่สถิติ Bad แต่ไม่บวก Rep หลัก
+                if cfg["count_rep"]:
+                    new_rep = True
+                    if final_label == "squat_good":
+                        self.count += 1
+                        self.good_count += 1
+                    else:
+                        self.bad_count += 1
 
         return new_rep
 
