@@ -91,13 +91,22 @@ export default function TrainPage({ onFinish }) {
 
   // ── flash feedback ────────────────────────────────────────────────────────
   const [flash, setFlash] = useState("");
-  useEffect(() => {
-    if (feedback) {
+  const lastFeedbackRef = useRef(""); // ใช้ Ref ช่วยจำเพื่อไม่ให้กะพริบซ้ำถ้าข้อความเดิมส่งมาต่อเนื่อง
+useEffect(() => {
+    // ถ้ามี feedback ใหม่มา และไม่ซ้ำกับอันล่าสุด หรือเป็นจังหวะที่จำนวน Rep เปลี่ยน
+    if (feedback && feedback !== lastFeedbackRef.current) {
       setFlash(feedback);
-      const t = setTimeout(() => setFlash(""), 1800);
+      lastFeedbackRef.current = feedback;
+
+      // ตั้งเวลาให้หายไป (3000ms = 3 วินาที)
+      const t = setTimeout(() => {
+        setFlash("");
+        lastFeedbackRef.current = ""; // เคลียร์เพื่อให้แสดงข้อความเดิมซ้ำได้ในครั้งต่อไป
+      }, 3000); 
+
       return () => clearTimeout(t);
     }
-  }, [feedback, result?.reps, result?.total_time]);
+  }, [feedback, reps, good, bad]); // เพิ่ม reps, good, bad เป็นตัวกระตุ้นด้วย
 
   const handleFinish = () => {
     setActive(false);
@@ -557,7 +566,6 @@ export default function TrainPage({ onFinish }) {
                 </button>
               </>
             )}
-            
           </div>
         </div>
       </div>
