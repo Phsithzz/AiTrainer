@@ -175,7 +175,12 @@ class PushupPredictor:
 
         label      = le.inverse_transform([smooth_idx])[0]
         confidence = float(proba[0][smooth_idx])
-
+# ---------------------------------------------------------
+        # 🟢 เพิ่ม RULE ตรงนี้: ปิดตา AI ไม่ให้จับผิดตอนเราพัก/แขนตึง
+        # ---------------------------------------------------------
+        if self.counter.state == "UP":
+            label = "pushup_good"  # บังคับส่งผลให้หน้าเว็บว่าทำถูกอยู่
+        # --------------------------------------------------------
         new_rep  = self.counter.update(lm_list, label, confidence)
         cfg      = CLASS_CONFIG.get(label, DEFAULT_CONFIG)
         feedback = cfg["feedback"] if new_rep and label != "pushup_good" else ""
