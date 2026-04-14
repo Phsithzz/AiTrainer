@@ -9,10 +9,26 @@ export default function TrainPage({ onFinish }) {
   const overlayRef     = useRef(null);
   const [active, setActive]     = useState(false);
   const [finished, setFinished] = useState(false);
-
+const [isTracking, setIsTracking] = useState(false); 
+  const [countdown, setCountdown]   = useState(null);
   const { result, wsStatus, resetSession, cfg } = useExerciseWS(
-    exercise, videoRef, overlayRef, active
+    exercise, videoRef, overlayRef, active, isTracking 
   );
+useEffect(() => {
+    if (countdown === null) return;
+    
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      return () => clearTimeout(timer);
+    } else if (countdown === 0) {
+      setIsTracking(true); // พอเหลือ 0 ค่อยสั่งให้ AI เริ่มทำงาน
+      setCountdown(null);  // ซ่อนหน้าต่างนับถอยหลัง
+    }
+  }, [countdown]);
+  const handleStart = () => {
+    setActive(true);   // เปิดกล้อง+เชื่อม WebSocket ทันที
+    setCountdown(5);   // เริ่มนับ 5 วินาที
+  };
 
   const isTimer = cfg.mode === "timer";
   const accent  = cfg.accent;
@@ -93,8 +109,8 @@ export default function TrainPage({ onFinish }) {
       <div className="flex-1 flex flex-col lg:flex-row">
 
         {/* ── Camera ── */}
-        <div className="relative flex-1 bg-black flex items-center justify-center min-h-[360px]">
-          <div className="relative w-full h-full flex items-center justify-center">
+        <div className="relative flex-1 p-4 lg:p-8 bg-black flex items-center justify-center min-h-90">
+          <div className="relative w-full max-w-5xl aspect-4/3 bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10 flex items-center justify-center">
 
             <video ref={videoRef} autoPlay muted playsInline
               className="w-full h-full object-cover"
@@ -116,7 +132,7 @@ export default function TrainPage({ onFinish }) {
                 <p className="text-white/30 text-xs tracking-widest mb-8 text-center">
                   {isTimer ? "จับเวลาเฉพาะตอนทำท่าถูกต้อง" : "นับ rep อัตโนมัติ"}
                 </p>
-                <button onClick={() => setActive(true)}
+                <button onClick={handleStart}
                   className="px-10 py-4 text-sm tracking-[0.3em] font-black rounded-xl transition-all active:scale-95"
                   style={{ background: `linear-gradient(135deg, ${accent}, ${accent}aa)`, color: "#000" }}>
                   START SESSION
@@ -217,6 +233,18 @@ export default function TrainPage({ onFinish }) {
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
                 <div className="text-xs tracking-widest text-white/30 bg-black/60 px-4 py-2 rounded-full backdrop-blur-sm">
                   ไม่พบท่าทาง — ยืนหน้ากล้อง
+                </div>
+              </div>
+            )}
+
+            {active && countdown !== null && countdown > 0 && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/60 z-30 backdrop-blur-sm">
+                <div className="flex flex-col items-center">
+                  <div className="text-[12rem] font-black text-white leading-none animate-pulse" 
+                       style={{ textShadow: `0 0 60px ${accent}` }}>
+                    {countdown}
+                  </div>
+                  <div className="text-white/60 tracking-[0.5em] font-black mt-4">GET READY</div>
                 </div>
               </div>
             )}
@@ -339,7 +367,7 @@ export default function TrainPage({ onFinish }) {
               </>
             )}
             {!active && !finished && (
-              <button onClick={() => setActive(true)}
+              <button onClick={handleStart}
                 className="w-full py-3 text-xs tracking-widest font-black rounded-lg"
                 style={{ background: accent, color: "#000" }}>
                 START

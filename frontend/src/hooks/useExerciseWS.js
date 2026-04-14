@@ -76,7 +76,13 @@ export const EXERCISE_CONFIG = {
   },
 };
 
-export function useExerciseWS(exercise, videoRef, overlayCanvasRef, active) {
+export function useExerciseWS(exercise, videoRef, overlayCanvasRef, active, isTracking = true) {
+  const isTrackingRef = useRef(isTracking);
+
+  useEffect(() => {
+    isTrackingRef.current = isTracking;
+  }, [isTracking]);
+
   const wsRef       = useRef(null);
   const intervalRef = useRef(null);
   const sendingRef  = useRef(false);
@@ -195,6 +201,7 @@ const toXY = (lm) => ({ x: lm.x * W, y: lm.y * H });
     intervalRef.current = setInterval(() => {
       if (sendingRef.current) return;
       if (wsRef.current?.readyState !== WebSocket.OPEN) return;
+      if (!isTrackingRef.current) return;
       const b64 = captureFrame();
       if (!b64) return;
       sendingRef.current = true;
