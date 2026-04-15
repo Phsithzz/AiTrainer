@@ -1,9 +1,13 @@
 import { useNavigate } from "react-router-dom";
-
+import { IoMdArrowRoundBack } from "react-icons/io";
+import { RiTodoLine } from "react-icons/ri";
+import plank_mode from "../assets/images/plank_mode.png"
+import squat_mode from "../assets/images/squat_mode.jpg"
+import push_up_mode from "../assets/images/pushmode.png"
 const EXERCISE_META = {
-  squat:  { label: "SQUAT",   icon: "🏋️", color: "#00ff88", mode: "reps"  },
-  pushup: { label: "PUSH UP", icon: "💪", color: "#ff6b35", mode: "reps"  },
-  plank:  { label: "PLANK",   icon: "🧘", color: "#a855f7", mode: "timer" },
+  squat:  { label: "SQUAT",   icon: squat_mode, color: "#00ff88", mode: "reps"  },
+  pushup: { label: "PUSH UP", icon: push_up_mode, color: "#ff6b35", mode: "reps"  },
+  plank:  { label: "PLANK",   icon: plank_mode, color: "#a855f7", mode: "timer" },
 };
 
 const formatTime = (sec) => {
@@ -24,11 +28,11 @@ export default function HistoryPage({ sessions }) {
   const goodRate  = totalReps > 0 ? Math.round((totalGood / totalReps) * 100) : 0;
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#0a0a0f]">
-      <header className="flex items-center justify-between px-6 py-4 border-b border-white/5">
+    <div className="min-h-screen flex flex-col bg-black">
+      <header className="flex items-center justify-between px-6 py-4 border-b-2 border-white">
         <button onClick={() => navigate("/")}
-          className="text-xs tracking-widest text-white/40 hover:text-white transition-colors">
-          ← BACK
+          className="cursor-pointer flex items-center gap-2 text-xs tracking-widest text-white/40 hover:text-white transition-colors">
+          <IoMdArrowRoundBack /> BACK  
         </button>
         <span className="text-xs tracking-[0.4em] text-white/30">SESSION HISTORY</span>
         <div className="w-16" />
@@ -37,9 +41,9 @@ export default function HistoryPage({ sessions }) {
       <div className="flex-1 max-w-3xl mx-auto w-full px-6 py-10">
         {sessions.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-center">
-            <div className="text-4xl mb-4 opacity-30">📋</div>
-            <div className="text-white/20 text-sm tracking-widest">ยังไม่มีประวัติการฝึก</div>
-            <div className="text-white/10 text-xs mt-2">เริ่มฝึกและกด FINISH SESSION เพื่อบันทึก</div>
+            <RiTodoLine className="size-50" />
+            <div className="text-white/ text-sm tracking-widest">ยังไม่มีประวัติการฝึก</div>
+            <div className="text-white/ text-xs mt-2">เริ่มฝึกและกด FINISH SESSION เพื่อบันทึก</div>
           </div>
         ) : (
           <>
@@ -51,7 +55,7 @@ export default function HistoryPage({ sessions }) {
                 { label: "PLANK TIME", value: formatTime(totalTime),      color: "#a855f7" },
                 { label: "ACCURACY",   value: `${goodRate}%`,             color: goodRate >= 70 ? "#00ff88" : "#ff9500" },
               ].map((s) => (
-                <div key={s.label} className="bg-white/[0.03] border border-white/5 rounded-xl p-4 text-center">
+                <div key={s.label} className="bg-white/3 border border-white/5 rounded-xl p-4 text-center">
                   <div className="text-2xl font-black" style={{ fontFamily: "'Arial Black', sans-serif", color: s.color }}>
                     {s.value}
                   </div>
@@ -71,10 +75,9 @@ export default function HistoryPage({ sessions }) {
 
                 return (
                   <div key={i}
-                    className="flex items-center gap-4 bg-white/[0.03] border border-white/5 rounded-xl px-5 py-4 hover:border-white/10 transition-colors">
-                    <div className="text-2xl">{meta.icon}</div>
+                    className="flex items-center gap-4 bg-white/3 border border-white/5 rounded-xl px-5 py-4 hover:border-white/10 transition-colors">
+                    <img src={meta.icon} className="w-20 h-20"/>                    <div className="flex-1">
 
-                    <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-xs font-black tracking-widest" style={{ color: meta.color }}>
                           {meta.label}

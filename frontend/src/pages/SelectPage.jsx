@@ -41,42 +41,9 @@ export default function SelectPage({ sessions }) {
   const navigate   = useNavigate();
   const canvasRef  = useRef(null);
 
-  // animated dot grid
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    let frame = 0;
-    let animId;
 
-    const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
-    resize();
-    window.addEventListener("resize", resize);
 
-    const draw = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const cols = 24; const rows = 16;
-      const cw = canvas.width / cols; const ch = canvas.height / rows;
 
-      for (let r = 0; r <= rows; r++) {
-        for (let c = 0; c <= cols; c++) {
-          const dist  = Math.sqrt(Math.pow(c - cols / 2, 2) + Math.pow(r - rows / 2, 2));
-          const pulse = Math.sin(frame * 0.015 - dist * 0.35) * 0.5 + 0.5;
-          ctx.beginPath();
-          ctx.arc(c * cw, r * ch, 1.5, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(255,255,255,${pulse * 0.06})`;
-          ctx.fill();
-        }
-      }
-      frame++;
-      animId = requestAnimationFrame(draw);
-    };
-    draw();
-    return () => { cancelAnimationFrame(animId); window.removeEventListener("resize", resize); };
-  }, []);
-
-  const totalReps = sessions.reduce((s, x) => s + (x.reps || 0), 0);
-  const totalTime = sessions.reduce((s, x) => s + (x.total_time || 0), 0);
 
   return (
     <div className="relative min-h-screen flex flex-col overflow-hidden">

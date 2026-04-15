@@ -131,7 +131,7 @@ useEffect(() => {
   return (
     <div className="min-h-screen flex flex-col bg-[#0a0a0f]">
       {/* header */}
-      <header className="flex items-center justify-between px-6 py-4 border-b border-white/5">
+      <header className="flex items-center justify-between px-6 py-4 border-b-2 border-white">
         <button
           onClick={handleBack}
           className="flex items-center gap-2 cursor-pointer text-xs tracking-widest text-white/40 hover:text-white transition-colors"
@@ -223,11 +223,11 @@ useEffect(() => {
             {/* FINISH overlay */}
             {finished && (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-20">
-                <div className="text-5xl mb-4">🏁</div>
+                <div className="text-7xl mb-4">🏁</div>
                 <div className="text-2xl font-black text-white mb-2">
                   SESSION DONE
                 </div>
-                <div className="text-white/40 text-xs tracking-widest mb-8">
+                <div className="text-white/60 text-xs tracking-widest mb-8">
                   ผลลัพธ์ถูกบันทึกแล้ว
                 </div>
 
@@ -257,7 +257,7 @@ useEffect(() => {
                         >
                           {v}
                         </div>
-                        <div className="text-[10px] tracking-widest text-white/30 mt-1">
+                        <div className="text-[10px] tracking-widest text-white/60 mt-1">
                           {l}
                         </div>
                       </div>
@@ -267,7 +267,7 @@ useEffect(() => {
 
                 <button
                   onClick={handleBack}
-                  className="px-8 py-3 text-sm tracking-widest text-black font-black rounded-lg"
+                  className="cursor-pointer px-8 py-3 text-sm tracking-widest text-black font-black rounded-lg"
                   style={{ background: accent }}
                 >
                   BACK TO HOME
