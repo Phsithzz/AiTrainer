@@ -191,29 +191,34 @@ class SquatPredictor:
         # ---------------------------------------------------------
         # 🎯 HYBRID RULES: เอา Rule-based มาดักจับทับ AI อีกรอบ
         # ---------------------------------------------------------
+# 🟢 แก้ไขที่ 1: ปิดตา AI ไม่ให้จับผิดตอนกำลังยืนพัก (UP)
         lms = results.pose_landmarks.landmark
-        
-        # กฎที่ 1: ดักจับส้นเท้าลอย
-        LEFT_HEEL, RIGHT_HEEL = 29, 30
-        LEFT_FOOT_INDEX, RIGHT_FOOT_INDEX = 31, 32
-        
-        heel_y = (lms[LEFT_HEEL].y + lms[RIGHT_HEEL].y) / 2
-        foot_y = (lms[LEFT_FOOT_INDEX].y + lms[RIGHT_FOOT_INDEX].y) / 2
-        
-        # ถ้าระดับ Y ของส้นเท้า อยู่สูงกว่าปลายเท้า (Y น้อย = อยู่ด้านบน)
-        if heel_y < foot_y - 0.015: 
-            label = "squat_bad_heel"
+        if self.counter.state == "UP":
+            label = "squat_good"
+        else:
+            # 🟢 แก้ไขที่ 2: ให้จับผิดเฉพาะตอนกำลังย่อตัว (DOWN) เท่านั้น
+            # กฎที่ 1: ดักจับส้นเท้าลอย
+            LEFT_HEEL, RIGHT_HEEL = 29, 30
+            LEFT_FOOT_INDEX, RIGHT_FOOT_INDEX = 31, 32
+            
+            heel_y = (lms[LEFT_HEEL].y + lms[RIGHT_HEEL].y) / 2
+            foot_y = (lms[LEFT_FOOT_INDEX].y + lms[RIGHT_FOOT_INDEX].y) / 2
+            
+            # ปรับตัวเลขความเซนซิทีฟจาก 0.015 เป็น 0.04 (เพิ่มระยะเผื่อให้มุมกล้อง)
+            if heel_y < foot_y - 0.04: 
+                label = "squat_bad_heel"
+                confidence = 0.99  # บังคับให้มั่นใจไปเลยเพื่อ Override AI
 
-        # กฎที่ 2: ดักจับหลังงอ
-        shoulder = [ (lms[11].x + lms[12].x)/2, (lms[11].y + lms[12].y)/2 ]
-        hip      = [ (lms[23].x + lms[24].x)/2, (lms[23].y + lms[24].y)/2 ]
-        knee     = [ (lms[25].x + lms[26].x)/2, (lms[25].y + lms[26].y)/2 ]
-        
-        back_angle = self._calculate_angle(shoulder, hip, knee)
-        
-        # ถ้าพับตัวลงมามากเกินไป ถือว่างอหลัง (ตัวเลข 60.0 ปรับจูนได้)
-        if back_angle < 60.0: 
-            label = "squat_bad_back"
+            # กฎที่ 2: ดักจับหลังงอ
+            shoulder = [ (lms[11].x + lms[12].x)/2, (lms[11].y + lms[12].y)/2 ]
+            hip      = [ (lms[23].x + lms[24].x)/2, (lms[23].y + lms[24].y)/2 ]
+            knee     = [ (lms[25].x + lms[26].x)/2, (lms[25].y + lms[26].y)/2 ]
+            
+            back_angle = self._calculate_angle(shoulder, hip, knee)
+            
+            if back_angle < 60.0: 
+                label = "squat_bad_back"
+                confidence = 0.99  # บังคับให้มั่นใจไปเลย
         # ---------------------------------------------------------
 
         # 4. update rep counter
