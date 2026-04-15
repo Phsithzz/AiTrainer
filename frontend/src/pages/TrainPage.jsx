@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useExerciseWS } from "../hooks/useExerciseWS";
-
+import { IoMdArrowRoundBack } from "react-icons/io";
 export default function TrainPage({ onFinish }) {
   const { exercise } = useParams();
   const navigate = useNavigate();
@@ -134,9 +134,9 @@ useEffect(() => {
       <header className="flex items-center justify-between px-6 py-4 border-b border-white/5">
         <button
           onClick={handleBack}
-          className="text-xs tracking-widest text-white/40 hover:text-white transition-colors"
+          className="flex items-center gap-2 cursor-pointer text-xs tracking-widest text-white/40 hover:text-white transition-colors"
         >
-          ← BACK
+        <IoMdArrowRoundBack /> BACK  
         </button>
 
         <div className="flex items-center gap-3">
@@ -197,7 +197,9 @@ useEffect(() => {
                 </div>
                 <button
                   onClick={handleStart}
-                  className="px-10 py-4 text-sm tracking-[0.3em] font-black rounded-xl transition-all active:scale-95 hover:scale-105 shadow-[0_0_20px_rgba(0,0,0,0.5)]"
+                  className="
+                  cursor-pointer
+                  px-10 py-4 text-sm tracking-[0.3em] font-black rounded-xl transition-all active:scale-95 hover:scale-105 shadow-[0_0_20px_rgba(0,0,0,0.5)]"
                   style={{
                     background: `linear-gradient(135deg, ${accent}, ${accent}aa)`,
                     color: "#000",
@@ -550,13 +552,15 @@ useEffect(() => {
               <>
                 <button
                   onClick={resetSession}
-                  className="w-full py-3 text-xs tracking-widest text-white/50 border border-white/10 rounded-lg hover:border-white/30 hover:text-white transition-all"
+                  className="
+                  cursor-pointer
+                  w-full py-3 text-xs tracking-widest text-white/50 border border-white/10 rounded-lg hover:border-white/30 hover:text-white transition-all"
                 >
                   RESET
                 </button>
                 <button
                   onClick={handleFinish}
-                  className="w-full py-3 text-xs tracking-widest font-black rounded-lg"
+                  className="cursor-pointer w-full py-3 text-xs tracking-widest font-black rounded-lg"
                   style={{
                     background: `linear-gradient(135deg, ${accent}, ${accent}aa)`,
                     color: "#000",
