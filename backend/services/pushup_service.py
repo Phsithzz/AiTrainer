@@ -17,7 +17,7 @@ print(f"✓ โหลด pushup model สำเร็จ | classes: {le.classes_
 
 CLASS_CONFIG = {
     "pushup_good":     {"feedback": "",           "count_rep": True},
-    "pushup_bad_neck": {"feedback": "คอก้มเกิน!", "count_rep": True},
+    "pushup_bad_neck": {"feedback": "คอไม่ตรง!", "count_rep": True},
     "pushup_bad_back": {"feedback": "หลังแอ่น!",  "count_rep": True},
 }
 DEFAULT_CONFIG = {"feedback": "", "count_rep": False}
@@ -181,9 +181,34 @@ class PushupPredictor:
         if self.counter.state == "UP":
             label = "pushup_good"  # บังคับส่งผลให้หน้าเว็บว่าทำถูกอยู่
         # --------------------------------------------------------
+        elif self.counter.state == "DOWN":
+            lms = results.pose_landmarks.landmark
+            
+            # 1. แกล้งก้มคอ (Neck Down Hack)
+            NOSE = 0
+            SHOULDER = 11  # ไหล่ซ้าย
+            # ถ้าจมูกอยู่ต่ำกว่าไหล่มากเกินไป (แกน Y ในคอม ยิ่งลงล่างค่ายิ่งมาก)
+            if lms[NOSE].y > lms[SHOULDER].y + 0.15:
+                label = "pushup_bad_neck"
+                confidence = 0.99  # บังคับให้ผ่าน Threshold
+
+            # 2. แกล้งหลังแอ่น (Bad Back Hack)
+# 2. แกล้งหลังแอ่น (Bad Back Hack - ฉลาดขึ้น!)
+            SHOULDER = 11  # ไหล่ซ้าย
+            HIP = 23       # สะโพก
+            KNEE = 25      # เข่า
+            
+            # คำนวณ "จุดกึ่งกลาง" ระหว่างไหล่กับเข่า (หลังที่ตรง สะโพกควรอยู่แถวๆ นี้)
+            expected_hip_y = (lms[SHOULDER].y + lms[KNEE].y) / 2
+            
+            # ถ้าระดับสะโพกจริง ห้อยต่ำกว่าจุดกึ่งกลางมากเกินไป (ค่า Y ในจอคอมยิ่งมากลงล่าง)
+            # 🟢 ตัวเลข 0.08 คือ "ระยะหยวนๆ" ปรับให้มาก/น้อยได้ตามมุมกล้องครับ
+            if lms[HIP].y > expected_hip_y + 0.04:
+                label = "pushup_bad_back"
+                confidence = 0.99  # บังคับให้ผ่าน Threshold
         new_rep  = self.counter.update(lm_list, label, confidence)
         cfg      = CLASS_CONFIG.get(label, DEFAULT_CONFIG)
-        feedback = cfg["feedback"] if new_rep and label != "pushup_good" else ""
+        feedback = cfg["feedback"] if label != "pushup_good" else ""
 
         elbow_angle = self.counter._elbow_angle(lm_list)
         proba_dict = {cls: float(proba[0][i]) for i, cls in enumerate(le.classes_)}

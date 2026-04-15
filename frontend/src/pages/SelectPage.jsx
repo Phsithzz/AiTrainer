@@ -1,9 +1,11 @@
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { GrNext } from "react-icons/gr";
 import plank_mode from "../assets/images/plank_mode.png"
 import squat_mode from "../assets/images/squat_mode.jpg"
 import push_up_mode from "../assets/images/pushmode.png"
+import pvp_mode from "../assets/images/pvp_mode.png"
+
 const EXERCISES = [
   {
     id:        "squat",
@@ -35,15 +37,31 @@ const EXERCISES = [
     accent:    "#a855f7",
     mode:      "จับเวลา",
   },
+  {
+    id:        "pvp",
+    label:     "PVP",
+    thai:      "โหมดต่อสู้",
+    icon:      pvp_mode,
+    desc:      "บททดสอบความแข็งแกร่ง",
+    available: false, // <--- ตั้งเป็น false ไว้ถูกต้องแล้ว
+    accent:    "#FAE251",
+    mode:      "ต่อสู้",
+  },
 ];
 
 export default function SelectPage({ sessions }) {
   const navigate   = useNavigate();
   const canvasRef  = useRef(null);
 
-
-
-
+  // 🟢 ฟังก์ชันดักจับการคลิก
+  const handleSelect = (ex) => {
+    if (!ex.available) {
+      // ถ้า false ให้แจ้งเตือน หรือไม่ต้องทำอะไรเลย
+      alert("โหมดนี้กำลังอยู่ในการพัฒนา (Coming Soon!)");
+      return;
+    }
+    navigate(`/train/${ex.id}`);
+  };
 
   return (
     <div className="relative min-h-screen flex flex-col overflow-hidden">
@@ -60,12 +78,6 @@ export default function SelectPage({ sessions }) {
           <span className="text-sm tracking-[0.3em] text-white/60 uppercase">Form Trainer</span>
         </div>
         <div className="flex items-center gap-6">
-          {/* {sessions.length > 0 && (
-            <div className="flex items-center gap-4 text-xs text-white/30">
-              <span><span className="text-white">{totalReps}</span> REPS</span>
-              <span><span className="text-white">{totalTime.toFixed(0)}s</span> PLANK</span>
-            </div>
-          )} */}
           <button onClick={() => navigate("/history")}
             className="text-xs tracking-widest text-white/60 cursor-pointer 
             hover:text-white 
@@ -84,7 +96,7 @@ export default function SelectPage({ sessions }) {
         <div className="mb-2 text-white/50 text-xs tracking-[0.5em] uppercase">AI-Powered</div>
         <h1 className="text-center mb-4">
           <span className="block text-6xl md:text-8xl font-black tracking-[0.15em] text-white "
-           >WORKOUT</span>
+            >WORKOUT</span>
           <span className="block text-6xl md:text-8xl font-black tracking-[0.2em] "
             style={{  WebkitTextStroke: "2px #ffffff60", color: "transparent" }}>
             TRAINER
@@ -94,13 +106,13 @@ export default function SelectPage({ sessions }) {
           เลือกท่าออกกำลังกาย — AI วิเคราะห์ฟอร์มแบบ real-time
         </p>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 w-full max-w-4xl">
+        {/* 🟢 แก้ Grid ให้รองรับ 4 การ์ดได้สวยงามขึ้น */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 w-full max-w-7xl">
           {EXERCISES.map((ex) => (
             <ExerciseCard
               key={ex.id}
               ex={ex}
-              sessionCount={sessions.filter((s) => s.exercise === ex.id).length}
-              onSelect={() => navigate(`/train/${ex.id}`)}
+              onSelect={() => handleSelect(ex)}
             />
           ))}
         </div>
@@ -118,42 +130,68 @@ export default function SelectPage({ sessions }) {
 }
 
 function ExerciseCard({ ex, onSelect }) {
+  // 🟢 เช็คว่าเปิดให้เล่นไหม เพื่อเปลี่ยนสี CSS
+  const isAvailable = ex.available;
+
   return (
     <div onClick={onSelect}
-      className="group relative border border-white/10 hover:border-white/30 cursor-pointer bg-white/2 hover:bg-white/1 rounded-xl p-6 transition-all duration-300 overflow-hidden">
-
-      {/* glow */}
-      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none rounded-xl"
-        style={{ background: `radial-gradient(ellipse at 50% 0%, ${ex.accent}12 0%, transparent 70%)` }} />
+      className={`group relative border rounded-xl p-6 transition-all duration-300 overflow-hidden 
+        ${isAvailable 
+          ? "border-white/10 hover:border-white/30 cursor-pointer bg-white/5 hover:bg-white/10" 
+          : "border-white/5 bg-black/40 cursor-not-allowed opacity-60" // ทำให้การ์ด PVP ดูหม่นลง
+        }`}
+    >
+      {/* glow (แสดงผลเฉพาะโหมดที่เปิดให้เล่น) */}
+      {isAvailable && (
+        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none rounded-xl"
+          style={{ background: `radial-gradient(ellipse at 50% 0%, ${ex.accent}15 0%, transparent 70%)` }} />
+      )}
 
       {/* corner */}
-      <div className="absolute top-0 right-0 w-16 h-16 opacity-10 group-hover:opacity-40 transition-opacity"
+      <div className={`absolute top-0 right-0 w-16 h-16 transition-opacity ${isAvailable ? 'opacity-10 group-hover:opacity-40' : 'opacity-5'}`}
         style={{ background: `linear-gradient(225deg, ${ex.accent} 0%, transparent 60%)` }} />
 
       <div className="relative z-10">
-       
-<img src={ex.icon} alt={ex.label} className="w-20 h-20"/>
+        <img src={ex.icon} alt={ex.label} className={`w-20 h-20 object-contain mb-4 ${!isAvailable && 'grayscale'}`} />
+        
         <div className="flex items-start justify-between mb-1">
           <div>
             <div className="text-2xl font-black tracking-tight transition-colors"
-              style={{ fontFamily: "'Arial Black', sans-serif", color: ex.accent }}>
+              style={{ fontFamily: "'Arial Black', sans-serif", color: isAvailable ? ex.accent : '#888' }}>
               {ex.label}
             </div>
             <div className="text-white/40 text-xs">{ex.thai}</div>
           </div>
-          <span className="text-[9px] tracking-widest px-2 py-1 rounded mt-1"
-            style={{ color: ex.accent, border: `1px solid ${ex.accent}30`, backgroundColor: ex.accent + "10" }}>
-            {ex.mode}
-          </span>
         </div>
 
-        <p className="text-white/30 text-xs mt-3 mb-4 leading-relaxed">{ex.desc}</p>
+        <div className="mt-2 flex gap-2 items-center">
+          <span className="text-[9px] tracking-widest px-2 py-1 rounded"
+            style={{ 
+              color: isAvailable ? ex.accent : '#888', 
+              border: `1px solid ${isAvailable ? ex.accent + '30' : '#444'}`, 
+              backgroundColor: isAvailable ? ex.accent + "10" : '#222' 
+            }}>
+            {ex.mode}
+          </span>
+          {!isAvailable && (
+            <span className="text-[9px] font-black tracking-widest text-black bg-[#FAE251] px-2 py-1 rounded">
+              SOON
+            </span>
+          )}
+        </div>
+
+        <p className="text-white/30 text-xs mt-3 mb-6 leading-relaxed min-h-10">
+          {ex.desc}
+        </p>
 
         <div className="flex items-center justify-between">
-
-          <span className="flex items-center gap-2 text-[10px] tracking-widest px-3 py-1.5 rounded border transition-colors"
-            style={{ borderColor: `${ex.accent}40`, color: ex.accent }}>
-            START <GrNext />
+          <span className="flex items-center gap-2 text-[10px] font-black tracking-widest px-3 py-1.5 rounded border transition-colors"
+            style={{ 
+              borderColor: isAvailable ? `${ex.accent}40` : '#444', 
+              color: isAvailable ? ex.accent : '#666',
+              backgroundColor: isAvailable ? 'transparent' : '#111'
+            }}>
+            {isAvailable ? "START" : "LOCKED"} <GrNext />
           </span>
         </div>
       </div>

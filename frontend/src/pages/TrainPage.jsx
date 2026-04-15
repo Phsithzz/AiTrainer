@@ -90,23 +90,23 @@ export default function TrainPage({ onFinish }) {
   const elbowAngle = result?.elbow_angle || null;
 
   // ── flash feedback ────────────────────────────────────────────────────────
-  const [flash, setFlash] = useState("");
-  const lastFeedbackRef = useRef(""); // ใช้ Ref ช่วยจำเพื่อไม่ให้กะพริบซ้ำถ้าข้อความเดิมส่งมาต่อเนื่อง
-useEffect(() => {
-    // ถ้ามี feedback ใหม่มา และไม่ซ้ำกับอันล่าสุด หรือเป็นจังหวะที่จำนวน Rep เปลี่ยน
-    if (feedback && feedback !== lastFeedbackRef.current) {
-      setFlash(feedback);
-      lastFeedbackRef.current = feedback;
+//   const [flash, setFlash] = useState("");
+//   const lastFeedbackRef = useRef(""); // ใช้ Ref ช่วยจำเพื่อไม่ให้กะพริบซ้ำถ้าข้อความเดิมส่งมาต่อเนื่อง
+// useEffect(() => {
+//     // ถ้ามี feedback ใหม่มา และไม่ซ้ำกับอันล่าสุด หรือเป็นจังหวะที่จำนวน Rep เปลี่ยน
+//     if (feedback && feedback !== lastFeedbackRef.current) {
+//       setFlash(feedback);
+//       lastFeedbackRef.current = feedback;
 
-      // ตั้งเวลาให้หายไป (3000ms = 3 วินาที)
-      const t = setTimeout(() => {
-        setFlash("");
-        lastFeedbackRef.current = ""; // เคลียร์เพื่อให้แสดงข้อความเดิมซ้ำได้ในครั้งต่อไป
-      }, 3000); 
+//       // ตั้งเวลาให้หายไป (3000ms = 3 วินาที)
+//       const t = setTimeout(() => {
+//         setFlash("");
+//         lastFeedbackRef.current = ""; // เคลียร์เพื่อให้แสดงข้อความเดิมซ้ำได้ในครั้งต่อไป
+//       }, 2000); 
 
-      return () => clearTimeout(t);
-    }
-  }, [feedback, reps, good, bad]); // เพิ่ม reps, good, bad เป็นตัวกระตุ้นด้วย
+//       return () => clearTimeout(t);
+//     }
+//   }, [feedback, reps, good, bad]); // เพิ่ม reps, good, bad เป็นตัวกระตุ้นด้วย
 
   const handleFinish = () => {
     setActive(false);
@@ -347,10 +347,11 @@ useEffect(() => {
             )}
 
             {/* flash feedback */}
-            {flash && (
+  {/* โค้ดใหม่: ใช้คำว่า feedback ตรงๆ เลยไม่ต้องผ่านตัวแปร flash */}
+            {feedback && (
               <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
                 <div
-                  className="px-8 py-4 rounded-2xl backdrop-blur-sm text-2xl font-black tracking-wide"
+                  className="px-8 py-4 rounded-2xl backdrop-blur-sm text-2xl font-black tracking-wide transition-all duration-150"
                   style={{
                     backgroundColor: color + "30",
                     border: `2px solid ${color}`,
@@ -358,7 +359,7 @@ useEffect(() => {
                     textShadow: `0 0 20px ${color}`,
                   }}
                 >
-                  {flash}
+                  {feedback}
                 </div>
               </div>
             )}
