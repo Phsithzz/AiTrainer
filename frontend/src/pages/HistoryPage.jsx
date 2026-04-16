@@ -42,8 +42,8 @@ export default function HistoryPage({ sessions }) {
         {sessions.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-center">
             <RiTodoLine className="size-50" />
-            <div className="text-white/ text-sm tracking-widest">ยังไม่มีประวัติการฝึก</div>
-            <div className="text-white/ text-xs mt-2">เริ่มฝึกและกด FINISH SESSION เพื่อบันทึก</div>
+            <div className="text-white/50 text-sm tracking-widest">ยังไม่มีประวัติการฝึก</div>
+            <div className="text-white/50 text-xs mt-2">เริ่มฝึกและกด FINISH SESSION เพื่อบันทึก</div>
           </div>
         ) : (
           <>

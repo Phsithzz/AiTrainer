@@ -49,7 +49,7 @@ export const EXERCISE_CONFIG = {
     },
     probaKeys: [
       { key: "pushup_good",     label: "GOOD",      color: "#ff6b35" },
-      { key: "pushup_bad_neck", label: "NECK DOWN", color: "#ff9500" },
+      { key: "pushup_bad_neck", label: "BAD NECK ", color: "#ff9500" },
       { key: "pushup_bad_back", label: "BACK BENT", color: "#ff3b30" },
     ],
     mode: "reps",

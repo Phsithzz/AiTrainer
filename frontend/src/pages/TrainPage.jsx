@@ -113,10 +113,18 @@ export default function TrainPage({ onFinish }) {
     setFinished(true);
   };
 
-  const handleBack = () => {
+const handleBack = () => {
+    // คำนวณจำนวนครั้งทั้งหมด (Total Attempts) ให้ชัวร์ที่สุด
+    const totalAttempts = good + bad;
+
     const sessionResult = isTimer
       ? { total_time: totalTime }
-      : { reps, good_count: good, bad_count: bad };
+      : { 
+          reps: totalAttempts > 0 ? totalAttempts : reps, // บังคับเซฟเป็นยอดรวม
+          good_count: good, 
+          bad_count: bad 
+        };
+        
     onFinish(sessionResult, exercise);
     navigate("/");
   };
@@ -276,7 +284,7 @@ export default function TrainPage({ onFinish }) {
             )}
 
             {/* status badge */}
-            {active && (
+            {active && (  
               <div className="absolute top-4 left-4 z-10">
                 <div
                   className="px-4 py-2 rounded-lg backdrop-blur-sm text-sm font-black tracking-wider transition-all duration-300"
@@ -333,9 +341,9 @@ export default function TrainPage({ onFinish }) {
                     className="text-xs tracking-widest bg-black/50 px-3 py-1.5 rounded backdrop-blur-sm"
                     style={{
                       color:
-                        elbowAngle <= 100
+                        elbowAngle <= 115
                           ? "#ff3b30"
-                          : elbowAngle >= 155
+                          : elbowAngle >= 140
                             ? "#00ff88"
                             : "#ff9500",
                     }}

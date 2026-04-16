@@ -203,7 +203,7 @@ class PushupPredictor:
             
             # ถ้าระดับสะโพกจริง ห้อยต่ำกว่าจุดกึ่งกลางมากเกินไป (ค่า Y ในจอคอมยิ่งมากลงล่าง)
             # 🟢 ตัวเลข 0.08 คือ "ระยะหยวนๆ" ปรับให้มาก/น้อยได้ตามมุมกล้องครับ
-            if lms[HIP].y > expected_hip_y + 0.04:
+            if lms[HIP].y > expected_hip_y + 0.055:
                 label = "pushup_bad_back"
                 confidence = 0.99  # บังคับให้ผ่าน Threshold
         new_rep  = self.counter.update(lm_list, label, confidence)
