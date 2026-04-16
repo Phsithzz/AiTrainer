@@ -138,7 +138,7 @@ function ExerciseCard({ ex, onSelect }) {
       className={`group relative border rounded-xl p-6 transition-all duration-300 overflow-hidden 
         ${isAvailable 
           ? "border-white/10 hover:border-white/30 cursor-pointer bg-white/5 hover:bg-white/10" 
-          : "border-white/5 bg-black/40 cursor-not-allowed opacity-60" // ทำให้การ์ด PVP ดูหม่นลง
+          : "border-white bg-black/40 cursor-not-allowed opacity-60 " // ทำให้การ์ด PVP ดูหม่นลง
         }`}
     >
       {/* glow (แสดงผลเฉพาะโหมดที่เปิดให้เล่น) */}
