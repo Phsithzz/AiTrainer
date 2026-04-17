@@ -1,9 +1,18 @@
 import json
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, Depends
+import psycopg2
+import os
+from dotenv import load_dotenv
+
+from schemas import WorkoutData
 
 from services.squat_service import SquatPredictor
 from services.pushup_service import PushupPredictor
 from services.plank_service import PlankPredictor
+from auth import get_current_user_id
+
+load_dotenv()
+DB_URL = os.getenv("DATABASE_URL")
 
 router  = APIRouter()
 
@@ -96,3 +105,39 @@ async def plank_exercise(websocket: WebSocket):
 
     except WebSocketDisconnect:
         print("✗ Client disconnected — plank")
+
+
+@router.post("/workouts")
+def save_workout(data: WorkoutData, user_id: int = Depends(get_current_user_id)):
+    conn = psycopg2.connect(DB_URL)
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            """INSERT INTO workouts (user_id, exercise, reps, good, bad, accuracy) 
+               VALUES (%s, %s, %s, %s, %s, %s)""",
+            (user_id, data.exercise, data.reps, data.good, data.bad, data.accuracy)
+        )
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
+    return {"message": "บันทึกสถิติสำเร็จ"}
+
+@router.get("/workouts")
+def get_workouts(user_id: int = Depends(get_current_user_id)):
+    conn = psycopg2.connect(DB_URL)
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "SELECT exercise, reps, good, bad, accuracy, created_at FROM workouts WHERE user_id = %s ORDER BY created_at DESC",
+            (user_id,)
+        )
+        columns = [desc[0] for desc in cursor.description]
+        records = [dict(zip(columns, row)) for row in cursor.fetchall()]
+    finally:
+        cursor.close()
+        conn.close()
+    return records
