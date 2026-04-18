@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 
-const WS_BASE = "ws://localhost:8000/exercise";
+const WS_BASE = import.meta.env.VITE_WS_URL || "ws://localhost:8000/exercise";
 const SEND_INTERVAL_MS = 100;
 
 const POSE_CONNECTIONS = [
