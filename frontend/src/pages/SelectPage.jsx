@@ -36,17 +36,7 @@ const EXERCISES = [
     available: true,
     accent:    "#a855f7",
     mode:      "จับเวลา",
-  },
-  {
-    id:        "pvp",
-    label:     "PVP",
-    thai:      "โหมดต่อสู้",
-    icon:      pvp_mode,
-    desc:      "บททดสอบความแข็งแกร่ง",
-    available: false, // <--- ตั้งเป็น false ไว้ถูกต้องแล้ว
-    accent:    "#FAE251",
-    mode:      "ต่อสู้",
-  },
+  }
 ];
 
 export default function SelectPage({ sessions }) {
@@ -66,7 +56,11 @@ export default function SelectPage({ sessions }) {
   return (
     <div className="relative min-h-screen flex flex-col overflow-hidden">
       <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" />
-
+    <div className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage: 'linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)',
+          backgroundSize: '40px 40px'
+        }} />
       {/* header */}
       <header className="relative z-10 flex items-center justify-between px-8 py-6 border-b-2 border-white ">
         <div className="flex items-center gap-3">
@@ -107,7 +101,7 @@ export default function SelectPage({ sessions }) {
         </p>
 
         {/* 🟢 แก้ Grid ให้รองรับ 4 การ์ดได้สวยงามขึ้น */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 w-full max-w-7xl">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 w-full max-w-7xl">
           {EXERCISES.map((ex) => (
             <ExerciseCard
               key={ex.id}

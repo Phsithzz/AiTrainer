@@ -89,24 +89,6 @@ export default function TrainPage({ onFinish }) {
   // pushup elbow angle
   const elbowAngle = result?.elbow_angle || null;
 
-  // ── flash feedback ────────────────────────────────────────────────────────
-//   const [flash, setFlash] = useState("");
-//   const lastFeedbackRef = useRef(""); // ใช้ Ref ช่วยจำเพื่อไม่ให้กะพริบซ้ำถ้าข้อความเดิมส่งมาต่อเนื่อง
-// useEffect(() => {
-//     // ถ้ามี feedback ใหม่มา และไม่ซ้ำกับอันล่าสุด หรือเป็นจังหวะที่จำนวน Rep เปลี่ยน
-//     if (feedback && feedback !== lastFeedbackRef.current) {
-//       setFlash(feedback);
-//       lastFeedbackRef.current = feedback;
-
-//       // ตั้งเวลาให้หายไป (3000ms = 3 วินาที)
-//       const t = setTimeout(() => {
-//         setFlash("");
-//         lastFeedbackRef.current = ""; // เคลียร์เพื่อให้แสดงข้อความเดิมซ้ำได้ในครั้งต่อไป
-//       }, 2000); 
-
-//       return () => clearTimeout(t);
-//     }
-//   }, [feedback, reps, good, bad]); // เพิ่ม reps, good, bad เป็นตัวกระตุ้นด้วย
 
   const handleFinish = () => {
     setActive(false);

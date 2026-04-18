@@ -13,7 +13,7 @@ export function useHistory() {
 
         setIsLoading(true);
         try {
-            const res = await fetch(`${API_URL}/exercise/workouts`, {
+            const res = await fetch(`${API_URL}/workouts`, {
                 headers: { "Authorization": `Bearer ${token}` }
             });
             if (res.ok) {
@@ -33,7 +33,7 @@ export function useHistory() {
         if (!token) return; // ถ้าเป็น Guest ไม่ต้องเซฟลง DB
 
         try {
-            await fetch(`${API_URL}/exercise/workouts`, {
+            await fetch(`${API_URL}/workouts`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
