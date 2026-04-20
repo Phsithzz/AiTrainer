@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 
-export default function LoginPage() {
+export default function LoginPage({ onLogin }) {
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const { login, isLoading, error } = useAuth()
@@ -11,7 +11,9 @@ export default function LoginPage() {
   const handleLogin = async (e) => {
     e.preventDefault()
     const ok = await login(identifier, password)
-    if (ok) navigate('/')
+    if (ok) {
+      onLogin?.();
+      navigate('/')}
   }
 
   return (

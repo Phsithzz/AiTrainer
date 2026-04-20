@@ -2,7 +2,7 @@ import { useRef, useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useExerciseWS } from "../hooks/useExerciseWS";
 import { IoMdArrowRoundBack } from "react-icons/io";
-export default function TrainPage({ onFinish }) {
+export default function TrainPage({ onFinish, isLoggedIn }) {
   const { exercise } = useParams();
   const navigate = useNavigate();
   const videoRef = useRef(null);
@@ -19,7 +19,7 @@ export default function TrainPage({ onFinish }) {
     active,
     isTracking,
   );
-
+const [shouldPromptLogin, setShouldPromptLogin] = useState(false);
   const isTimer = cfg.mode === "timer";
   const accent = cfg.accent;
   useEffect(() => {
@@ -92,7 +92,11 @@ export default function TrainPage({ onFinish }) {
 
   const handleFinish = () => {
     setActive(false);
-    setFinished(true);
+    if (!isLoggedIn) {
+      setShouldPromptLogin(true); // แสดง popup แทน
+    } else {
+      setFinished(true); // บันทึกปกติ
+    }
   };
 
 const handleBack = () => {
@@ -217,9 +221,9 @@ const handleBack = () => {
                 <div className="text-2xl font-black text-white mb-2">
                   SESSION DONE
                 </div>
-                <div className="text-white/60 text-xs tracking-widest mb-8">
-                  ผลลัพธ์ถูกบันทึกแล้ว
-                </div>
+               <div className="text-white/60 text-xs tracking-widest mb-8">
+  {isLoggedIn ? "ผลลัพธ์ถูกบันทึกแล้ว" : "ออกโดยไม่บันทึก"}
+</div>
 
                 {isTimer ? (
                   <div className="text-center mb-8">
@@ -264,7 +268,40 @@ const handleBack = () => {
                 </button>
               </div>
             )}
+{/* LOGIN PROMPT overlay */}
+{shouldPromptLogin && (
+  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-20 backdrop-blur-sm">
+    <div className="text-5xl mb-4">💾</div>
+    <div className="text-xl font-black text-white mb-2">
+      บันทึกผลลัพธ์?
+    </div>
+    <div className="text-white/50 text-xs tracking-widest text-center mb-8 px-8">
+      เข้าสู่ระบบเพื่อบันทึกข้อมูล<br />การออกกำลังกายของคุณ
+    </div>
 
+    <div className="flex flex-col gap-3 w-48">
+      <button
+        onClick={() => navigate("/login")}
+        className="cursor-pointer w-full py-3 text-sm tracking-widest font-black rounded-lg"
+        style={{
+          background: `linear-gradient(135deg, ${accent}, ${accent}aa)`,
+          color: "#000",
+        }}
+      >
+        LOGIN
+      </button>
+      <button
+        onClick={() => {
+          setShouldPromptLogin(false);
+          setFinished(true); // แสดง SESSION DONE แบบไม่บันทึก
+        }}
+        className="cursor-pointer w-full py-3 text-xs tracking-widest text-white/50 border border-white/10 rounded-lg hover:border-white/30 hover:text-white transition-all"
+      >
+        ข้ามไปก่อน
+      </button>
+    </div>
+  </div>
+)}
             {/* status badge */}
             {active && (  
               <div className="absolute top-4 left-4 z-10">
