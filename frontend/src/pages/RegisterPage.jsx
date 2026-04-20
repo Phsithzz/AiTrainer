@@ -94,7 +94,7 @@ export default function RegisterPage() {
             <div className="mb-4">
               <label className="block text-[10px] tracking-[0.25em] text-white/40 uppercase mb-1.5 font-normal">Username</label>
               <input type="text" value={username} onChange={e => setUsername(e.target.value.toLowerCase())}
-                placeholder="a-z, 0-9, _ (3-20 ตัว)"
+                placeholder="your name"
                 className="
                 focus:border-white/60
                 w-full bg-transparent border border-white/15 text-white text-sm px-4 py-3 outline-none placeholder:text-white/20 tracking-wide transition-colors"
@@ -165,8 +165,10 @@ export default function RegisterPage() {
    
 
             <button type="submit" disabled={isLoading}
-              className="w-full py-3.5 bg-white text-black font-black text-[11px] tracking-[0.25em] uppercase hover:bg-black hover:text-white border border-white transition-all duration-200 disabled:opacity-40">
-              {isLoading ? 'LOADING...' : 'CREATE ACCOUNT →'}
+              className="
+              cursor-pointer
+              w-full py-3.5 bg-white text-black font-black text-[11px] tracking-[0.25em] uppercase hover:bg-black hover:text-white border border-white transition-all duration-200 disabled:opacity-40">
+              {isLoading ? 'LOADING...' : 'CREATE ACCOUNT'}
             </button>
           </form>
 
