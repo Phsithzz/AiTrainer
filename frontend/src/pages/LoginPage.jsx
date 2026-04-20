@@ -37,12 +37,12 @@ export default function LoginPage() {
 
       {/* Main */}
       <main className="relative z-10 flex-1 flex items-center justify-center px-6 py-12">
-        <div className="w-full max-w-md border border-white/15 bg-white/[0.03] p-10">
+        <div className="w-full max-w-md border border-white/15 bg-white/3 p-10">
           
           <div className="text-[10px] tracking-[0.5em] text-white/40 uppercase mb-2 font-normal">
             AI-Powered Workout
           </div>
-          <h1 className="text-5xl font-black tracking-[0.1em] leading-none mb-1">
+          <h1 className="text-5xl font-black tracking-widest leading-none mb-1">
             LOGIN
           </h1>
           <h2 className="text-5xl font-black tracking-[0.15em] leading-none mb-2"
@@ -60,7 +60,9 @@ export default function LoginPage() {
             </button>
             <button
               onClick={() => navigate('/register')}
-              className="flex-1 py-2.5 text-[10px] font-black tracking-[0.25em] uppercase text-white/35 border-l border-white/20 hover:text-white transition-colors">
+              className="
+              cursor-pointer 
+              flex-1 py-2.5 text-[10px] font-black tracking-[0.25em] uppercase text-white/35 border-l border-white/20 hover:text-white transition-colors">
               REGISTER
             </button>
           </div>
@@ -98,23 +100,27 @@ export default function LoginPage() {
               />
             </div>
 
-            <div className="text-right mb-5">
+            {/* <div className="text-right mb-5">
               <a href="#" className="text-[11px] text-white/35 tracking-widest hover:text-white transition-colors">
                 ลืมรหัสผ่าน?
               </a>
-            </div>
+            </div> */}
 
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3.5 bg-white text-black font-black text-[11px] tracking-[0.25em] uppercase hover:bg-black hover:text-white border border-white transition-all duration-200 disabled:opacity-40">
-              {isLoading ? 'LOADING...' : 'START →'}
+              className="
+              cursor-pointer
+              w-full py-3.5 bg-white text-black font-black text-[11px] tracking-[0.25em] uppercase
+               hover:bg-black hover:text-white border 
+               border-white transition-all duration-200 disabled:opacity-40">
+              {isLoading ? 'LOADING...' : 'Sign In'}
             </button>
           </form>
 
           <p className="text-center mt-5 text-xs text-white/30 tracking-widest font-normal">
             ยังไม่มีบัญชี?{' '}
-            <button onClick={() => navigate('/register')} className="text-white/70 hover:text-white transition-colors">
+            <button onClick={() => navigate('/register')} className="cursor-pointer text-white/70 hover:text-white transition-colors">
               REGISTER
             </button>
           </p>
