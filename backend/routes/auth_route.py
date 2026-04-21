@@ -1,10 +1,13 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException,Security
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import psycopg2
 import os
 from dotenv import load_dotenv
 
 from schemas import UserRegister, UserLogin
-from auth import get_password_hash, verify_password, create_access_token
+from auth import get_password_hash, verify_password, create_access_token, is_token_blacklisted
+
+security = HTTPBearer()
 
 load_dotenv()
 DB_URL = os.getenv("DATABASE_URL")
@@ -12,6 +15,27 @@ DB_URL = os.getenv("DATABASE_URL")
 # สร้าง Router สำหรับ Auth
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
+@router.post("/logout")
+def logout(credentials: HTTPAuthorizationCredentials = Security(security)):
+    token = credentials.credentials
+    
+    # ถ้า blacklist แล้วก็ไม่ต้องทำซ้ำ
+    if is_token_blacklisted(token):
+        return {"message": "Logout แล้ว"}
+    
+    conn = psycopg2.connect(DB_URL)
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "INSERT INTO token_blacklist (token) VALUES (%s)", (token,)
+        )
+        conn.commit()
+    finally:
+        cursor.close()
+        conn.close()
+    
+    return {"message": "Logout สำเร็จ"}
+    
 @router.post("/register")
 def register(user: UserRegister):
     conn = psycopg2.connect(DB_URL)
