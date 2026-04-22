@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 
 export default function RegisterPage() {
@@ -56,10 +56,10 @@ export default function RegisterPage() {
         }} />
 
       <header className="relative z-10 flex items-center px-8 py-6 border-b-2 border-white">
-        <div className="flex items-center gap-3">
+        <Link to="/" className="flex items-center gap-3">
           <div className="w-8 h-8 bg-white text-black flex items-center justify-center font-black text-xs">AI</div>
           <span className="text-xs tracking-[0.3em] text-white/50 uppercase font-normal">Form Trainer</span>
-        </div>
+        </Link>
       </header>
 
       <main className="relative z-10 flex-1 flex items-center justify-center px-6 py-12">

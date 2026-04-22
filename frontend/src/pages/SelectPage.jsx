@@ -1,11 +1,10 @@
 import { useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { GrNext } from "react-icons/gr";
 import plank_mode from "../assets/images/plank_mode.png"
 import squat_mode from "../assets/images/squat_mode.jpg"
 import push_up_mode from "../assets/images/pushmode.png"
-import pvp_mode from "../assets/images/pvp_mode.png"
-
+import { useAuth } from "../hooks/useAuth";  // เพิ่ม
 const EXERCISES = [
   {
     id:        "squat",
@@ -39,20 +38,23 @@ const EXERCISES = [
   }
 ];
 
-export default function SelectPage({ sessions }) {
+export default function SelectPage() {
   const navigate   = useNavigate();
   const canvasRef  = useRef(null);
-
+const { logout } = useAuth();  // เพิ่ม
+  const token = localStorage.getItem("token");
   // 🟢 ฟังก์ชันดักจับการคลิก
+   const handleLogout = async () => {
+    await logout();          // เรียก API blacklist token
+    navigate("/");      // redirect ไป login
+  };
   const handleSelect = (ex) => {
     if (!ex.available) {
-      // ถ้า false ให้แจ้งเตือน หรือไม่ต้องทำอะไรเลย
       alert("โหมดนี้กำลังอยู่ในการพัฒนา (Coming Soon!)");
       return;
     }
     navigate(`/train/${ex.id}`);
   };
-
   return (
     <div className="relative min-h-screen flex flex-col overflow-hidden">
       <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" />
@@ -63,14 +65,16 @@ export default function SelectPage({ sessions }) {
         }} />
       {/* header */}
       <header className="relative z-10 flex items-center justify-between px-8 py-6 border-b-2 border-white ">
-        <div className="flex items-center gap-3">
-          <button className="w-8 h-8 rounded-sm bg-white flex items-center justify-center border-black
+        <Link to="/" className="flex items-center gap-3">
+          <button className="
+         
+          w-8 h-8 rounded-sm bg-white flex items-center justify-center border-black
           hover:bg-black hover:border-white hover:text-white text-black font-semibold
           transition duration-300 ease-in cursor-pointer">
             AI
           </button>
           <span className="text-sm tracking-[0.3em] text-white/60 uppercase">Form Trainer</span>
-        </div>
+        </Link>
         <div className="flex items-center gap-6">
           <button onClick={() => navigate("/history")}
             className="text-xs tracking-widest text-white/60 cursor-pointer 
@@ -82,6 +86,29 @@ export default function SelectPage({ sessions }) {
             ">
             HISTORY
           </button>
+          {token ? (
+            // login แล้ว — แสดง LOGOUT
+            <button onClick={handleLogout}
+              className="text-xs tracking-widest text-white/60 cursor-pointer 
+            hover:text-white 
+            transition-colors 
+            border border-white 
+            hover:border-white/30 px-4 py-2 rounded
+            shadow-[2px_2px_0px_white]">
+              LOGOUT
+            </button>
+          ) : (
+            // guest — แสดง LOGIN
+            <button onClick={() => navigate("/login")}
+              className="text-xs tracking-widest text-white/60 cursor-pointer 
+            hover:text-white 
+            transition-colors 
+            border border-white 
+            hover:border-white/30 px-4 py-2 rounded
+            shadow-[2px_2px_0px_white]">
+              LOGIN
+            </button>
+          )}
         </div>
       </header>
 

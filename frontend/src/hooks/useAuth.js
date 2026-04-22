@@ -51,9 +51,20 @@ export function useAuth() {
         }
     };
 
-    const logout = () => {
-        localStorage.removeItem("token");
-    };
+const logout = async () => {
+    const token = localStorage.getItem("token");
+    if (token) {
+        try {
+            await fetch(`${API_URL}/auth/logout`, {
+                method: "POST",
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+        } catch (err) {
+            console.error("Logout error:", err);
+        }
+    }
+    localStorage.removeItem("token");
+};
 
     const getToken = () => localStorage.getItem("token");
 
