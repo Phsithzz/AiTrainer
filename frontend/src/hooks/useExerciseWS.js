@@ -82,13 +82,32 @@ export function useExerciseWS(exercise, videoRef, overlayCanvasRef, active, isTr
   const wsRef       = useRef(null);
   const intervalRef = useRef(null);
   const sendingRef  = useRef(false);
-
+// 🟢 1. เพิ่มตัวแปรสำหรับหน่วงเวลาเสียง (Cooldown 3 วินาที)
+  const lastAudioTime = useRef(0);
   const [result, setResult]     = useState(null);
   const [wsStatus, setWsStatus] = useState("disconnected");
 
   const cfg = EXERCISE_CONFIG[exercise] || EXERCISE_CONFIG.squat;
 const isTrackingRef = useRef(isTracking);
   useEffect(() => { isTrackingRef.current = isTracking; }, [isTracking]); 
+  const speakWarning = useCallback((label) => {
+    // ถ้าไม่มี label หรือไม่ได้เป็นท่าที่ผิด (ไม่มีคำว่า bad) ให้ข้ามไป
+    if (!label || !label.includes("_bad_")) return;
+
+    const now = Date.now();
+    // หน่วงเวลาไม่ให้พูดรัวๆ (3000 ms = 3 วินาที)
+    if (now - lastAudioTime.current > 3000) {
+      // ดึงข้อความจาก config เช่น "BACK BENT", "HEEL UP"
+      const textToSpeak = cfg.labelText[label] || "Bad form";
+      
+      const utterance = new SpeechSynthesisUtterance(textToSpeak);
+      utterance.lang = "en-US"; // ใช้สำเนียงอังกฤษ เพราะ Text เป็นภาษาอังกฤษ
+      utterance.rate = 1.1;     // ปรับให้พูดเร็วขึ้นนิดนึง
+      
+      window.speechSynthesis.speak(utterance);
+      lastAudioTime.current = now;
+    }
+  }, [cfg]);
   // ── วาด skeleton ──────────────────────────────────────────────────────────
   const drawSkeleton = useCallback((landmarks, color) => {
     const canvas = overlayCanvasRef.current;
@@ -150,6 +169,7 @@ const toXY = (lm) => ({ x: lm.x * W, y: lm.y * H });
     return tmp.toDataURL("image/jpeg", 0.7);
   }, [videoRef]);
 
+  
   // ── WebSocket ─────────────────────────────────────────────────────────────
   const connectWS = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
@@ -170,6 +190,7 @@ const toXY = (lm) => ({ x: lm.x * W, y: lm.y * H });
       if (data.landmarks && data.pose_detected) {
         const color = cfg.labelColors[data.label] || cfg.accent;
         drawSkeleton(data.landmarks, color);
+        speakWarning(data.label);
       } else if (!data.pose_detected) {
         clearCanvas();
       }
@@ -181,7 +202,7 @@ const toXY = (lm) => ({ x: lm.x * W, y: lm.y * H });
     ws.onclose = () => { setWsStatus("disconnected"); sendingRef.current = false; };
     ws.onerror = () => setWsStatus("error");
     wsRef.current = ws;
-  }, [exercise, cfg, drawSkeleton, clearCanvas]);
+  }, [exercise, cfg, drawSkeleton, clearCanvas, speakWarning]);
 
   const disconnectWS = useCallback(() => {
     clearInterval(intervalRef.current);

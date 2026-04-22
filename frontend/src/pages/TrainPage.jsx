@@ -62,6 +62,11 @@ export default function TrainPage({ onFinish, isLoggedIn }) {
 
   // 🟢 3. ฟังก์ชันเมื่อกดเริ่ม
   const handleStart = () => {
+  // --- โค้ดที่เพิ่มใหม่: ปลดล็อคระบบเสียง (Text-to-Speech) ---
+    const unlockSpeech = new SpeechSynthesisUtterance("");
+    window.speechSynthesis.speak(unlockSpeech);
+    // ---------------------------------------------------
+
     setActive(true); // เริ่มต่อ WebSocket
     setCountdown(5); // เริ่มนับ 5 วินาที
   };
