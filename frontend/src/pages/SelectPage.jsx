@@ -74,7 +74,7 @@ export default function SelectPage() {
             <h1 className="text-[10px] tracking-[0.5em] text-white/30 uppercase mb-4">
               Confirm
             </h1>
-            <div className="flex items-center gap-2">
+            <div className="flex  gap-2">
               <h1 className="text-3xl font-black tracking-widest text-white mb-1">
                 LOG
               </h1>
