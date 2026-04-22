@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
@@ -10,20 +11,16 @@ export function useAuth() {
         setIsLoading(true);
         setError(null);
         try {
-            const res = await fetch(`${API_URL}/auth/login`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ identifier, password })
-            });
-            const data = await res.json();
+            // โยน Object เข้าไปได้เลย ไม่ต้อง stringify
+            const res = await axios.post(`${API_URL}/auth/login`, { identifier, password });
             
-            if (!res.ok) throw new Error(data.detail || "Login failed");
-            
-            // 🟢 เก็บ Token ลงเครื่อง
-            localStorage.setItem("token", data.access_token);
+            // 🟢 เก็บ Token ลงเครื่อง (Axios ดึงข้อมูลจาก res.data)
+            localStorage.setItem("token", res.data.access_token);
             return true; 
         } catch (err) {
-            setError(err.message);
+            // ดึงข้อความ Error จาก FastAPI (ถ้ามี detail ส่งมา)
+            const errorMessage = err.response?.data?.detail || "Login failed";
+            setError(errorMessage);
             return false;
         } finally {
             setIsLoading(false);
@@ -34,37 +31,31 @@ export function useAuth() {
         setIsLoading(true);
         setError(null);
         try {
-            const res = await fetch(`${API_URL}/auth/register`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ username, email, password })
-            });
-            const data = await res.json();
-            
-            if (!res.ok) throw new Error(data.detail || "Register failed");
+            await axios.post(`${API_URL}/auth/register`, { username, email, password });
             return true;
         } catch (err) {
-            setError(err.message);
+            const errorMessage = err.response?.data?.detail || "Register failed";
+            setError(errorMessage);
             return false;
         } finally {
             setIsLoading(false);
         }
     };
 
-const logout = async () => {
-    const token = localStorage.getItem("token");
-    if (token) {
-        try {
-            await fetch(`${API_URL}/auth/logout`, {
-                method: "POST",
-                headers: { "Authorization": `Bearer ${token}` }
-            });
-        } catch (err) {
-            console.error("Logout error:", err);
+    const logout = async () => {
+        const token = localStorage.getItem("token");
+        if (token) {
+            try {
+                // คำสั่ง POST ที่ไม่มี Body (ใส่ {} ว่างๆ ไว้) แต่มี Header
+                await axios.post(`${API_URL}/auth/logout`, {}, {
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+            } catch (err) {
+                console.error("Logout error:", err.response?.data || err.message);
+            }
         }
-    }
-    localStorage.removeItem("token");
-};
+        localStorage.removeItem("token");
+    };
 
     const getToken = () => localStorage.getItem("token");
 
