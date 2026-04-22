@@ -31,7 +31,7 @@ export function useHistory() {
     const saveWorkout = async (exerciseData) => {
         const token = localStorage.getItem("token");
         if (!token) return; // ถ้าเป็น Guest ไม่ต้องเซฟลง DB
-
+  console.log("body ที่ส่งไป:", JSON.stringify(exerciseData))
         try {
             await fetch(`${API_URL}/workouts`, {
                 method: "POST",

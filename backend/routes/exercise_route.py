@@ -112,10 +112,12 @@ def save_workout(data: WorkoutData, user_id: int = Depends(get_current_user_id))
     conn = psycopg2.connect(DB_URL)
     cursor = conn.cursor()
     try:
+        # 🟢 1. เพิ่ม total_time ในคำสั่ง INSERT และเพิ่ม %s
         cursor.execute(
-            """INSERT INTO workouts (user_id, exercise, reps, good, bad, accuracy) 
-               VALUES (%s, %s, %s, %s, %s, %s)""",
-            (user_id, data.exercise, data.reps, data.good, data.bad, data.accuracy)
+            """INSERT INTO workouts (user_id, exercise, reps, good, bad, accuracy, total_time) 
+               VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+            # 🟢 2. ส่ง data.total_time เข้าไปด้วย
+            (user_id, data.exercise, data.reps, data.good, data.bad, data.accuracy, data.total_time)
         )
         conn.commit()
     except Exception as e:
@@ -131,8 +133,9 @@ def get_workouts(user_id: int = Depends(get_current_user_id)):
     conn = psycopg2.connect(DB_URL)
     cursor = conn.cursor()
     try:
+        # 🟢 3. เพิ่ม total_time ในคำสั่ง SELECT เพื่อดึงกลับไปให้ Frontend
         cursor.execute(
-            "SELECT exercise, reps, good, bad, accuracy, created_at FROM workouts WHERE user_id = %s ORDER BY created_at DESC",
+            "SELECT exercise, reps, good, bad, accuracy, total_time, created_at FROM workouts WHERE user_id = %s ORDER BY created_at DESC",
             (user_id,)
         )
         columns = [desc[0] for desc in cursor.description]

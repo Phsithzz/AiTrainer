@@ -19,7 +19,7 @@ export default function TrainPage({ onFinish, isLoggedIn }) {
     active,
     isTracking,
   );
-const [shouldPromptLogin, setShouldPromptLogin] = useState(false);
+  const [shouldPromptLogin, setShouldPromptLogin] = useState(false);
   const isTimer = cfg.mode === "timer";
   const accent = cfg.accent;
   useEffect(() => {
@@ -89,29 +89,31 @@ const [shouldPromptLogin, setShouldPromptLogin] = useState(false);
   // pushup elbow angle
   const elbowAngle = result?.elbow_angle || null;
 
-
   const handleFinish = () => {
     setActive(false);
     if (!isLoggedIn) {
-      setShouldPromptLogin(true); // แสดง popup แทน
+      setShouldPromptLogin(true);
     } else {
-      setFinished(true); // บันทึกปกติ
+      const totalAttempts = good + bad;
+      const accuracy = good/totalAttempts * 100
+      // ส่งโครงสร้างที่ตรงกับ WorkoutData เสมอ
+      const sessionResult = {
+        exercise: exercise,
+        reps: isTimer ? 0 : (totalAttempts > 0 ? totalAttempts : reps),
+        good: isTimer ? 0 : good,
+        bad: isTimer ? 0 : bad,
+        accuracy: isTimer ? 0:accuracy, // หรือใส่สูตรคำนวณ accuracy (good / totalAttempts * 100)
+        total_time: isTimer ? totalTime : 0.0
+      };
+
+      console.log("sessionResult:", sessionResult);
+      onFinish(sessionResult, exercise); 
+      setFinished(true);
     }
   };
 
-const handleBack = () => {
-    // คำนวณจำนวนครั้งทั้งหมด (Total Attempts) ให้ชัวร์ที่สุด
-    const totalAttempts = good + bad;
+  const handleBack = () => {
 
-    const sessionResult = isTimer
-      ? { total_time: totalTime }
-      : { 
-          reps: totalAttempts > 0 ? totalAttempts : reps, // บังคับเซฟเป็นยอดรวม
-          good_count: good, 
-          bad_count: bad 
-        };
-        
-    onFinish(sessionResult, exercise);
     navigate("/");
   };
 
@@ -130,7 +132,7 @@ const handleBack = () => {
           onClick={handleBack}
           className="flex items-center gap-2 cursor-pointer text-xs tracking-widest text-white/40 hover:text-white transition-colors"
         >
-        <IoMdArrowRoundBack /> BACK  
+          <IoMdArrowRoundBack /> BACK
         </button>
 
         <div className="flex items-center gap-3">
@@ -221,9 +223,9 @@ const handleBack = () => {
                 <div className="text-2xl font-black text-white mb-2">
                   SESSION DONE
                 </div>
-               <div className="text-white/60 text-xs tracking-widest mb-8">
-  {isLoggedIn ? "ผลลัพธ์ถูกบันทึกแล้ว" : "ออกโดยไม่บันทึก"}
-</div>
+                <div className="text-white/60 text-xs tracking-widest mb-8">
+                  {isLoggedIn ? "ผลลัพธ์ถูกบันทึกแล้ว" : "ออกโดยไม่บันทึก"}
+                </div>
 
                 {isTimer ? (
                   <div className="text-center mb-8">
@@ -268,42 +270,44 @@ const handleBack = () => {
                 </button>
               </div>
             )}
-{/* LOGIN PROMPT overlay */}
-{shouldPromptLogin && (
-  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-20 backdrop-blur-sm">
-    <div className="text-5xl mb-4">💾</div>
-    <div className="text-xl font-black text-white mb-2">
-      บันทึกผลลัพธ์?
-    </div>
-    <div className="text-white/50 text-xs tracking-widest text-center mb-8 px-8">
-      เข้าสู่ระบบเพื่อบันทึกข้อมูล<br />การออกกำลังกายของคุณ
-    </div>
+            {/* LOGIN PROMPT overlay */}
+            {shouldPromptLogin && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-20 backdrop-blur-sm">
+                <div className="text-5xl mb-4">💾</div>
+                <div className="text-xl font-black text-white mb-2">
+                  บันทึกผลลัพธ์?
+                </div>
+                <div className="text-white/50 text-xs tracking-widest text-center mb-8 px-8">
+                  เข้าสู่ระบบเพื่อบันทึกข้อมูล
+                  <br />
+                  การออกกำลังกายของคุณ
+                </div>
 
-    <div className="flex flex-col gap-3 w-48">
-      <button
-        onClick={() => navigate("/login")}
-        className="cursor-pointer w-full py-3 text-sm tracking-widest font-black rounded-lg"
-        style={{
-          background: `linear-gradient(135deg, ${accent}, ${accent}aa)`,
-          color: "#000",
-        }}
-      >
-        LOGIN
-      </button>
-      <button
-        onClick={() => {
-          setShouldPromptLogin(false);
-          setFinished(true); // แสดง SESSION DONE แบบไม่บันทึก
-        }}
-        className="cursor-pointer w-full py-3 text-xs tracking-widest text-white/50 border border-white/10 rounded-lg hover:border-white/30 hover:text-white transition-all"
-      >
-        ข้ามไปก่อน
-      </button>
-    </div>
-  </div>
-)}
+                <div className="flex flex-col gap-3 w-48">
+                  <button
+                    onClick={() => navigate("/login")}
+                    className="cursor-pointer w-full py-3 text-sm tracking-widest font-black rounded-lg"
+                    style={{
+                      background: `linear-gradient(135deg, ${accent}, ${accent}aa)`,
+                      color: "#000",
+                    }}
+                  >
+                    LOGIN
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShouldPromptLogin(false);
+                      setFinished(true); // แสดง SESSION DONE แบบไม่บันทึก
+                    }}
+                    className="cursor-pointer w-full py-3 text-xs tracking-widest text-white/50 border border-white/10 rounded-lg hover:border-white/30 hover:text-white transition-all"
+                  >
+                    ข้ามไปก่อน
+                  </button>
+                </div>
+              </div>
+            )}
             {/* status badge */}
-            {active && (  
+            {active && (
               <div className="absolute top-4 left-4 z-10">
                 <div
                   className="px-4 py-2 rounded-lg backdrop-blur-sm text-sm font-black tracking-wider transition-all duration-300"
@@ -374,7 +378,7 @@ const handleBack = () => {
             )}
 
             {/* flash feedback */}
-  {/* โค้ดใหม่: ใช้คำว่า feedback ตรงๆ เลยไม่ต้องผ่านตัวแปร flash */}
+            {/* โค้ดใหม่: ใช้คำว่า feedback ตรงๆ เลยไม่ต้องผ่านตัวแปร flash */}
             {feedback && (
               <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
                 <div
