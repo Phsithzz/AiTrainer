@@ -78,7 +78,7 @@ export default function HistoryPage({ history, fetchHistory, isLoading }) {
   const totalReps = sessions.filter(s => EXERCISE_META[s.exercise]?.mode === "reps")
     .reduce((sum, s) => sum + (s.reps || 0), 0);
   const totalGood = sessions.filter(s => EXERCISE_META[s.exercise]?.mode === "reps")
-    .reduce((sum, s) => sum + (s.good_count || 0), 0);
+    .reduce((sum, s) => sum + (s.good || 0), 0);
   const totalTime = sessions.filter(s => EXERCISE_META[s.exercise]?.mode === "timer")
     .reduce((sum, s) => sum + (s.total_time || 0), 0);
   const goodRate  = totalReps > 0 ? Math.round((totalGood / totalReps) * 100) : 0;
@@ -173,7 +173,7 @@ export default function HistoryPage({ history, fetchHistory, isLoading }) {
                 const meta    = EXERCISE_META[s.exercise] || {};
                 const isTimer = meta.mode === "timer";
                 const rate    = !isTimer && s.reps > 0
-                  ? Math.round((s.good_count / s.reps) * 100)
+                  ? Math.round((s.good / s.reps) * 100)
                   : null;
 
                 return (
