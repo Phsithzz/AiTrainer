@@ -95,14 +95,14 @@ export default function TrainPage({ onFinish, isLoggedIn }) {
       setShouldPromptLogin(true);
     } else {
       const totalAttempts = good + bad;
-      const accuracy = good/totalAttempts * 100
+      const calculatedAccuracy = totalAttempts > 0 ? Math.round((good / totalAttempts) * 100) : 0;
       // ส่งโครงสร้างที่ตรงกับ WorkoutData เสมอ
       const sessionResult = {
         exercise: exercise,
         reps: isTimer ? 0 : (totalAttempts > 0 ? totalAttempts : reps),
         good: isTimer ? 0 : good,
         bad: isTimer ? 0 : bad,
-        accuracy: isTimer ? 0:accuracy, // หรือใส่สูตรคำนวณ accuracy (good / totalAttempts * 100)
+        accuracy: isTimer ? 0:calculatedAccuracy, // หรือใส่สูตรคำนวณ accuracy (good / totalAttempts * 100)
         total_time: isTimer ? totalTime : 0.0
       };
 
