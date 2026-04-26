@@ -20,8 +20,11 @@ export default function TrainPage({ onFinish, isLoggedIn }) {
     isTracking,
   );
   const [shouldPromptLogin, setShouldPromptLogin] = useState(false);
+  // เพิ่ม State นี้ไว้ด้านบนของ Component
+const [isExplaining, setIsExplaining] = useState(false);
   const isTimer = cfg.mode === "timer";
   const accent = cfg.accent;
+  
   useEffect(() => {
     const startCamera = async () => {
       try {
@@ -61,15 +64,24 @@ export default function TrainPage({ onFinish, isLoggedIn }) {
   }, [countdown]);
 
   // 🟢 3. ฟังก์ชันเมื่อกดเริ่ม
-  const handleStart = () => {
-  // --- โค้ดที่เพิ่มใหม่: ปลดล็อคระบบเสียง (Text-to-Speech) ---
-    const unlockSpeech = new SpeechSynthesisUtterance("");
-    window.speechSynthesis.speak(unlockSpeech);
-    // ---------------------------------------------------
+const handleStart = () => {
+  setActive(true); // เริ่มเปิด WebSocket/กล้องเตรียมไว้
+  setIsExplaining(true); // แสดงสถานะว่ากำลังอธิบาย
 
-    setActive(true); // เริ่มต่อ WebSocket
-    setCountdown(5); // เริ่มนับ 5 วินาที
+  const textToSpeak = cfg.instructionText || "Get ready";
+  const utterance = new SpeechSynthesisUtterance(textToSpeak);
+  utterance.lang = "th-TH";
+  utterance.rate = 1.0;
+
+  // 🏁 จุดสำคัญ: เมื่อพูดจบแล้วค่อยเริ่มนับถอยหลัง 5 วินาที
+  utterance.onend = () => {
+    setIsExplaining(false);
+    setCountdown(5); // เริ่มนับ 5 4 3 2 1
   };
+
+  // สั่งให้พูด
+  window.speechSynthesis.speak(utterance);
+};
   // ── ดึงค่าจาก result ──────────────────────────────────────────────────────
   const label = result?.label || null;
   const color = label ? cfg.labelColors[label] || accent : accent;
@@ -209,6 +221,7 @@ export default function TrainPage({ onFinish, isLoggedIn }) {
                   START WORKOUT
                 </button>
               </div>
+              
             )}
 
             {/* Loading overlay (ตอนรอผู้ใช้กด Allow อนุญาตกล้อง) */}
@@ -409,18 +422,52 @@ export default function TrainPage({ onFinish, isLoggedIn }) {
               </div>
             )}
 
-            {active && countdown !== null && countdown > 0 && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/60 z-30 backdrop-blur-sm">
-                <div className="flex flex-col items-center">
-                  <div
-                    className="text-[12rem] font-black text-white leading-none animate-pulse"
-                    style={{ textShadow: `0 0 60px ${accent}` }}
-                  >
-                    {countdown}
-                  </div>
-                  <div className="text-white/60 tracking-[0.5em] font-black mt-4">
-                    GET READY
-                  </div>
+     {/* 🟢 START / EXPLAINING / COUNTDOWN Overlay 🟢 */}
+            {active && (isExplaining || (countdown !== null && countdown > 0)) && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-30 backdrop-blur-md">
+                <div className="flex flex-col items-center max-w-lg text-center px-6">
+                  
+                  {isExplaining ? (
+                    // จังหวะที่ 1: กำลังพูดอธิบาย + โชว์วิดีโอตัวอย่าง
+                    <>
+                      {/* กรอบแสดงภาพ/วิดีโอตัวอย่าง */}
+                      <div className="w-64 md:w-80 aspect-video bg-black rounded-2xl overflow-hidden border-2 border-white/20 mb-8 shadow-[0_0_30px_rgba(255,255,255,0.1)]">
+                        <img 
+                          src={`/src/assets/images/${exercise}_ref.gif`} 
+                          alt={`${exercise} reference`}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+
+                      <div className="text-white text-xl md:text-2xl tracking-[0.2em] font-black mb-4" style={{ color: accent }}>
+                        HOW TO DO IT
+                      </div>
+
+                      {/* แสดงข้อความอธิบายให้อ่านไปพร้อมกับฟังเสียง */}
+                      <p className="text-base md:text-lg text-white/80 leading-relaxed font-medium mb-8">
+                        {cfg.instructionText || "เตรียมพร้อมสำหรับท่าต่อไป ยืนให้เต็มกล้อง"}
+                      </p>
+
+                      <div className="flex items-center gap-3 text-white/40 text-xs tracking-widest">
+                        <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                        LISTENING TO INSTRUCTIONS...
+                      </div>
+                    </>
+                  ) : (
+                    // จังหวะที่ 2: เริ่มนับ 5 4 3 2 1
+                    <>
+                      <div
+                        className="text-[12rem] font-black text-white leading-none animate-pulse"
+                        style={{ textShadow: `0 0 60px ${accent}` }}
+                      >
+                        {countdown}
+                      </div>
+                      <div className="text-white/60 tracking-[0.5em] font-black mt-4 uppercase">
+                        Get Ready
+                      </div>
+                    </>
+                  )}
+                  
                 </div>
               </div>
             )}

@@ -32,6 +32,7 @@ export const EXERCISE_CONFIG = {
       { key: "squat_bad_back", label: "BACK BENT", color: "#ff3b30" },
       { key: "squat_bad_foot", label: "FEET UP",   color: "#bf5af2" },
     ],
+    instructionText: "กางเท้าเท่าช่วงหัวไหล่ ย่อตัวลงโดยให้หลังตรงและส้นเท้าติดพื้น",
     mode: "reps",   // "reps" | "timer"
   },
   pushup: {
@@ -52,6 +53,7 @@ export const EXERCISE_CONFIG = {
       { key: "pushup_bad_neck", label: "BAD NECK ", color: "#ff9500" },
       { key: "pushup_bad_back", label: "BACK BENT", color: "#ff3b30" },
     ],
+    instructionText: "วางมือให้กว้างกว่าช่วงไหล่เล็กน้อย ลำตัวตรงตั้งแต่วันที่ถึงส้นเท้า",
     mode: "reps",
   },
   plank: {
@@ -72,6 +74,7 @@ export const EXERCISE_CONFIG = {
       { key: "plank_bad_back", label: "BACK BENT", color: "#ff3b30" },
       { key: "plank_bad_hip",  label: "HIP HIGH",  color: "#ff9500" },
     ],
+    instructionText: "วางศอกลงกับพื้น เกร็งหน้าท้องและรักษาแนวลำตัวให้ขนานกับพื้น",
     mode: "timer",  // plank ใช้จับเวลา ไม่นับ rep
   },
 };

@@ -49,6 +49,7 @@ export default function SelectPage() {
 
   // 🟢 ฟังก์ชันดักจับการคลิก
   const handleLogout = async () => {
+      setShowLogoutModal(false);
     await logout(); // เรียก API blacklist token
     navigate("/"); // redirect ไป login
   };
