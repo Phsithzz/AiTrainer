@@ -37,3 +37,4 @@ class WorkoutData(BaseModel):
     bad: Optional[int] = 0
     accuracy: Optional[int] = 0    # ท่าจับเวลาอาจจะไม่มี accuracy หรือให้เป็น 0 ไว้ก่อน
     total_time: Optional[float] = 0.0  # ฟิลด์ใหม่สำหรับ Plank
+    bad_details: Dict[str, int] = {}

@@ -114,8 +114,8 @@ def save_workout(data: WorkoutData, user_id: int = Depends(get_current_user_id))
     try:
         # 🟢 1. เพิ่ม total_time ในคำสั่ง INSERT และเพิ่ม %s
         cursor.execute(
-            """INSERT INTO workouts (user_id, exercise, reps, good, bad, accuracy, total_time) 
-               VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+            """INSERT INTO workouts (user_id, exercise, reps, good, bad, accuracy, total_time,bad_details) 
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
             # 🟢 2. ส่ง data.total_time เข้าไปด้วย
             (user_id, data.exercise, data.reps, data.good, data.bad, data.accuracy, data.total_time)
         )
