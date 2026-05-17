@@ -5,141 +5,247 @@ import joblib
 import base64
 from pathlib import Path
 
-BASE_DIR = Path(__file__).parent.parent
-model = joblib.load(BASE_DIR / "models" / "pushup_model.pkl")
-le    = joblib.load(BASE_DIR / "models" / "pushup_label_encoder.pkl")
+# ── โหลด Model Bundle จากไฟล์ที่เพื่อนเทรนมา ──────────────────────────────────────
+BASE_DIR = Path(__file__).parent.parent.parent
+BUNDLE_PATH = BASE_DIR / "backend" / "models" / "model_pushup_best.pkl"
 
-print(f"✓ โหลด pushup model สำเร็จ | classes: {le.classes_}")
+try:
+    bundle = joblib.load(BUNDLE_PATH)
+    model = bundle["model"]
+    le = bundle["label_encoder"]
+    feature_columns = bundle["feature_columns"]
+    print(f"✓ โหลด pushup bundle สำเร็จ | Classes: {list(le.classes_)}")
+except Exception as e:
+    print(f"[ERROR] โหลด Model Bundle ไม่สำเร็จ: {e}")
 
-# ── Config ────────────────────────────────────────────────────────────────────
+# ── MediaPipe Constants ───────────────────────────────────────────────────────
+MP_POSE = mp.solutions.pose
+REQUIRED_LANDMARK_INDICES = [0, 7, 8, 11, 12, 13, 14, 15, 16,
+                             23, 24, 25, 26, 27, 28, 29, 30, 31, 32]
+LANDMARK_NAMES = [
+    "nose", "left_ear", "right_ear",
+    "left_shoulder", "right_shoulder", "left_elbow", "right_elbow",
+    "left_wrist", "right_wrist",
+    "left_hip", "right_hip", "left_knee", "right_knee",
+    "left_ankle", "right_ankle", "left_heel", "right_heel",
+    "left_foot_index", "right_foot_index",
+]
+NAME_TO_MP_IDX = {name: idx for name, idx in zip(LANDMARK_NAMES, REQUIRED_LANDMARK_INDICES)}
 
-# ── Config ────────────────────────────────────────────────────────────────────
-
+# ── Config สำหรับ Web ────────────────────────────────────────────────────────
+SMOOTH_N = 7
 CLASS_CONFIG = {
-    "pushup_good":     {"feedback": "",           "count_rep": True},
-    "pushup_bad_neck": {"feedback": "คอไม่ตรง!", "count_rep": True},
-    "pushup_bad_back": {"feedback": "หลังแอ่น!",  "count_rep": True},
+    "pushup_good":     {"feedback": "", "count_rep": True},
+    "pushup_bad_hips": {"feedback": "สะโพกอย่ายก/ห้อย!", "count_rep": True},
+    "pushup_bad_legs": {"feedback": "เหยียดขาให้ตรง!", "count_rep": True},
+    "pushup_bad_neck": {"feedback": "ก้ม/เงยคอเกิน!", "count_rep": True},
 }
 DEFAULT_CONFIG = {"feedback": "", "count_rep": False}
 
-SMOOTH_N        = 7
-GOOD_THRESHOLD  = 0.60
+# ── Feature Extraction Functions (คงไว้ตามเพื่อน 100% เพื่อความแม่นยำ) ────────
+def _calc_angle(ax, ay, bx, by, cx, cy) -> float:
+    BAx, BAy = ax - bx, ay - by
+    BCx, BCy = cx - bx, cy - by
+    dot   = BAx * BCx + BAy * BCy
+    normA = (BAx**2 + BAy**2) ** 0.5 + 1e-8
+    normC = (BCx**2 + BCy**2) ** 0.5 + 1e-8
+    cos_a = max(-1.0, min(1.0, dot / (normA * normC)))
+    return float(np.degrees(np.arccos(cos_a)))
 
-# 🟢 1. ปรับองศาให้กว้างขึ้น (ลดความเข้มงวดลง)
-ELBOW_DOWN_DEG  = 115  # เดิม 100 (ถ้าลงแล้วตัวเลขหน้าจอน้อยกว่า 115 จะถือว่าลงสุด)
-ELBOW_UP_DEG    = 140  # เดิม 155 (ถ้าดันขึ้นแล้วตัวเลขมากกว่า 140 จะถือว่าขึ้นสุด)
+def _get_main_side(lm):
+    left  = lm[23].visibility + lm[25].visibility + lm[27].visibility
+    right = lm[24].visibility + lm[26].visibility + lm[28].visibility
+    if left >= right:
+        return "left",  23, 25, 27, 11
+    else:
+        return "right", 24, 26, 28, 12
 
-# landmark index
-LEFT_WRIST    = 15
-LEFT_ELBOW    = 13
-LEFT_SHOULDER = 11
+def landmarks_to_feature_dict(landmarks) -> dict | None:
+    lm = landmarks.landmark
+    side, hip_i, knee_i, ankle_i, shoulder_i = _get_main_side(lm)
+    hip = lm[hip_i]
+    ankle = lm[ankle_i]
+    center_x = hip.x
+    center_y = hip.y
 
-# ── Rep Counter ───────────────────────────────────────────────────────────────
+    scale = ((hip.x - ankle.x) ** 2 + (hip.y - ankle.y) ** 2) ** 0.5
+    if scale < 1e-3: return None
 
+    feat = {}
+    for name, mp_idx in NAME_TO_MP_IDX.items():
+        p = lm[mp_idx]
+        feat[f"{name}_x"] = (p.x - center_x) / scale
+        feat[f"{name}_y"] = (p.y - center_y) / scale
+        feat[f"{name}_z"] = p.z / scale
+
+    def xy(joint): return feat[f"{joint}_x"], feat[f"{joint}_y"]
+
+    hx, hy = xy(f"{side}_hip")
+    kx, ky = xy(f"{side}_knee")
+    ax, ay = xy(f"{side}_ankle")
+    sx, sy = xy(f"{side}_shoulder")
+
+    feat["knee_angle"] = _calc_angle(hx, hy, kx, ky, ax, ay)
+    feat["hip_angle"]  = _calc_angle(sx, sy, hx, hy, kx, ky)
+    feat["back_angle"] = _calc_angle(sx, sy, hx, hy, ax, ay)
+
+    ear_name = "left_ear" if side == "left" else "right_ear"
+    ear_lm   = lm[NAME_TO_MP_IDX[ear_name]]
+    if ear_lm.visibility > 0.5 and lm[shoulder_i].visibility > 0.5:
+        ex, ey = xy(ear_name)
+        feat["neck_angle"] = _calc_angle(ex, ey, sx, sy, hx, hy)
+    else:
+        feat["neck_angle"] = float("nan")
+
+    for s in ("left", "right"):
+        ssx, ssy = xy(f"{s}_shoulder"); eex, eey = xy(f"{s}_elbow"); wwx, wwy = xy(f"{s}_wrist")
+        feat[f"angle_elbow_{s}"] = _calc_angle(ssx, ssy, eex, eey, wwx, wwy)
+        hhx, hhy = xy(f"{s}_hip")
+        feat[f"angle_shoulder_{s}"] = _calc_angle(eex, eey, ssx, ssy, hhx, hhy)
+        kkx, kky = xy(f"{s}_knee")
+        feat[f"angle_hip_{s}"] = _calc_angle(ssx, ssy, hhx, hhy, kkx, kky)
+
+    ls_x, ls_y = xy("left_shoulder"); rs_x, rs_y = xy("right_shoulder")
+    lh_x, lh_y = xy("left_hip");      rh_x, rh_y = xy("right_hip")
+    lk_x, lk_y = xy("left_knee");     rk_x, rk_y = xy("right_knee")
+    la_x, la_y = xy("left_ankle");    ra_x, ra_y = xy("right_ankle")
+
+    sm_x = (ls_x + rs_x) / 2; sm_y = (ls_y + rs_y) / 2
+    hm_x = (lh_x + rh_x) / 2; hm_y = (lh_y + rh_y) / 2
+    am_x = (la_x + ra_x) / 2; am_y = (la_y + ra_y) / 2
+
+    feat["angle_body_line_bilateral"] = _calc_angle(sm_x, sm_y, hm_x, hm_y, am_x, am_y)
+    feat["elbow_angle_symmetry"]    = abs(feat["angle_elbow_left"]    - feat["angle_elbow_right"])
+    feat["shoulder_angle_symmetry"] = abs(feat["angle_shoulder_left"] - feat["angle_shoulder_right"])
+    feat["hip_angle_symmetry"]      = abs(feat["angle_hip_left"]      - feat["angle_hip_right"])
+
+    origin_x, origin_y = hm_x, hm_y
+    torso_scale = ((sm_x - hm_x) ** 2 + (sm_y - hm_y) ** 2) ** 0.5 + 1e-6
+
+    rel_joints = ["nose", "left_shoulder", "right_shoulder", "left_elbow", "right_elbow",
+                  "left_wrist", "right_wrist", "left_hip", "right_hip", "left_knee", "right_knee",
+                  "left_ankle", "right_ankle", "left_heel", "right_heel", "left_foot_index", "right_foot_index"]
+    
+    for joint in rel_joints:
+        if f"{joint}_x" not in feat: continue
+        jx, jy = xy(joint)
+        feat[f"rel_{joint}_x"] = (jx - origin_x) / torso_scale
+        feat[f"rel_{joint}_y"] = (jy - origin_y) / torso_scale
+
+    for s in ("left", "right"):
+        ssx, ssy = xy(f"{s}_shoulder"); eex, eey = xy(f"{s}_elbow"); wwx, wwy = xy(f"{s}_wrist")
+        feat[f"elbow_angle_{s}_calc"] = _calc_angle(ssx, ssy, eex, eey, wwx, wwy)
+    feat["elbow_angle_avg"] = (feat["elbow_angle_left_calc"] + feat["elbow_angle_right_calc"]) / 2
+
+    t = (hm_x - sm_x) / (am_x - sm_x) if abs(am_x - sm_x) > 1e-6 else 0.5
+    t = max(0.0, min(1.0, t))
+    ideal_hip_y = sm_y + t * (am_y - sm_y)
+    feat["hip_sag_score"] = (hm_y - ideal_hip_y) / torso_scale
+    feat["hip_sag_abs"]   = abs(feat["hip_sag_score"])
+
+    for s in ("left", "right"):
+        hhx, hhy = xy(f"{s}_hip"); kkx, kky = xy(f"{s}_knee"); aax, aay = xy(f"{s}_ankle")
+        feat[f"knee_angle_{s}"] = _calc_angle(hhx, hhy, kkx, kky, aax, aay)
+    
+    feat["knee_angle_avg"]       = (feat["knee_angle_left"] + feat["knee_angle_right"]) / 2
+    feat["legs_straight_score"]  = feat["knee_angle_avg"]
+
+    if isinstance(feat["neck_angle"], float) and not np.isnan(feat["neck_angle"]):
+        feat["neck_alignment_score"] = feat["neck_angle"]
+    else:
+        feat["neck_alignment_score"] = float("nan")
+
+    nx, ny = xy("nose")
+    feat["head_drop_score"] = (ny - sm_y) / torso_scale
+
+    for s in ("left", "right"):
+        wx, wy = xy(f"{s}_wrist"); ssx, ssy = xy(f"{s}_shoulder")
+        feat[f"wrist_under_shoulder_{s}"] = (wx - ssx) / torso_scale
+
+    return feat
+
+def build_feature_vector(feat_dict: dict, feature_cols: list) -> np.ndarray:
+    vec = []
+    for col in feature_cols:
+        val = feat_dict.get(col, 0.0)
+        if val is None or (isinstance(val, float) and np.isnan(val)):
+            val = 0.0
+        vec.append(float(val))
+    return np.array(vec, dtype=np.float32).reshape(1, -1)
+
+# ── Rep Counter (ปรับปรุงให้เก็บ Dashboard Data) ─────────────────────────────
 class RepCounter:
+    UP_THRESHOLD   = 155 
+    DOWN_THRESHOLD = 110 
+
     def __init__(self):
-        self.count      = 0
-        self.state      = "UP"
-        self.good_count = 0
-        self.bad_count  = 0
-        
-        # 🟢 2. เพิ่มระบบ "จำท่าผิด" เหมือน Squat
-        self.is_bad_rep = False
-        self.bad_label_memory = None
-
-    def _elbow_angle(self, landmarks: list) -> float | None:
-        try:
-            w = np.array([landmarks[LEFT_WRIST]["x"],    landmarks[LEFT_WRIST]["y"]])
-            e = np.array([landmarks[LEFT_ELBOW]["x"],    landmarks[LEFT_ELBOW]["y"]])
-            s = np.array([landmarks[LEFT_SHOULDER]["x"], landmarks[LEFT_SHOULDER]["y"]])
-            ew = w - e
-            es = s - e
-            cos_a = np.dot(ew, es) / (np.linalg.norm(ew) * np.linalg.norm(es) + 1e-8)
-            return float(np.degrees(np.arccos(np.clip(cos_a, -1, 1))))
-        except Exception:
-            return None
-
-    def update(self, landmarks: list, label: str, confidence: float) -> bool:
-            angle = self._elbow_angle(landmarks)
-            if angle is None:
-                return False
-
-            new_rep = False
-
-            if self.state == "UP" and angle <= ELBOW_DOWN_DEG:
-                # จังหวะลงสุด (เริ่ม Rep)
-                self.state = "DOWN"
-                self.is_bad_rep = False
-                self.bad_label_memory = None
-
-            elif self.state == "DOWN":
-                if angle < ELBOW_UP_DEG:
-                    # ระหว่างที่ยังขึ้นไม่สุด ถ้ามีจังหวะไหนท่าเสีย ให้จำไว้
-                    if label != "pushup_good" and confidence >= GOOD_THRESHOLD:
-                        self.is_bad_rep = True
-                        self.bad_label_memory = label
-                else:
-                    # จังหวะดันขึ้นสุด (จบ Rep)
-                    self.state = "UP"
-                    
-                    # ตัดสินผลจากความจำระหว่างทำ Rep
-                    final_label = self.bad_label_memory if self.is_bad_rep else "pushup_good"
-                    cfg = CLASS_CONFIG.get(final_label, DEFAULT_CONFIG)
-
-                    if cfg["count_rep"]:
-                        new_rep = True
-                        if final_label == "pushup_good":
-                            self.count += 1       # ✅ นับเข้าตัวเลข REPS หลัก เฉพาะ Good
-                            self.good_count += 1
-                        else:
-                            self.bad_count += 1    # ❌ ท่าผิด ไม่นับเข้า REPS หลัก แต่นับสถิติ BAD
-                            
-            return new_rep
+        self.reset()
 
     def reset(self):
-        self.__init__()
+        self.reps       = 0
+        self.state      = "UP" 
+        self.good_count = 0
+        self.bad_count  = 0
+        self.bad_details = {
+            "pushup_bad_hips": 0,
+            "pushup_bad_legs": 0,
+            "pushup_bad_neck": 0,
+        }
+        self._last_label = None
+
+    def update(self, label: str, feat_dict: dict | None) -> bool:
+        new_rep = False
+
+        # นับจังหวะท่าผิดแยกหมวดหมู่
+        if label in self.bad_details and label != self._last_label:
+            self.bad_details[label] += 1
+            self.bad_count += 1
+
+        if feat_dict is not None:
+            elbow_avg = feat_dict.get("elbow_angle_avg", 180.0)
+            if self.state == "UP" and elbow_avg < self.DOWN_THRESHOLD:
+                self.state = "DOWN"
+            elif self.state == "DOWN" and elbow_avg > self.UP_THRESHOLD:
+                self.state = "UP"
+                self.reps += 1
+                new_rep = True
+                if label == "pushup_good":
+                    self.good_count += 1
+
+        self._last_label = label
+        return new_rep
 
     def to_dict(self) -> dict:
         return {
-            "reps":       self.count,
+            "reps": self.reps,
             "good_count": self.good_count,
-            "bad_count":  self.bad_count,
-            "state":      self.state,
+            "bad_count": self.bad_count,
+            "bad_details": {k: v for k, v in self.bad_details.items() if v > 0},
+            "state": self.state,
         }
 
-# ── Predictor ─────────────────────────────────────────────────────────────────
-
+# ── API Predictor (เชื่อม WebSockets) ──────────────────────────────────────────
 class PushupPredictor:
     def __init__(self):
         self.pred_buffer = []
-        self.counter     = RepCounter()
-        self.pose = mp.solutions.pose.Pose(
+        self.counter = RepCounter()
+        self.pose = MP_POSE.Pose(
             static_image_mode=False,
             model_complexity=1,
             smooth_landmarks=True,
             min_detection_confidence=0.5,
             min_tracking_confidence=0.5,
         )
-        
+
     def decode_frame(self, b64_string: str) -> np.ndarray:
         if "," in b64_string:
             b64_string = b64_string.split(",", 1)[1]
         img_bytes = base64.b64decode(b64_string)
         arr = np.frombuffer(img_bytes, dtype=np.uint8)
-        frame = cv2.imdecode(arr, cv2.IMREAD_COLOR)
-        return frame
+        return cv2.imdecode(arr, cv2.IMREAD_COLOR)
 
-    def landmarks_to_vector(self, landmarks: list) -> np.ndarray:
-        row = []
-        for lm in landmarks:
-            row.extend([lm["x"], lm["y"], lm["z"], lm["visibility"]])
-        return np.array(row).reshape(1, -1)
-        
     def landmarks_to_list(self, landmarks) -> list:
-        return [
-            {"x": lm.x, "y": lm.y, "z": lm.z, "visibility": lm.visibility}
-            for lm in landmarks.landmark
-        ]
+        return [{"x": lm.x, "y": lm.y, "z": lm.z, "visibility": lm.visibility} for lm in landmarks.landmark]
 
     def predict(self, b64_frame: str) -> dict:
         frame = self.decode_frame(b64_frame)
@@ -153,75 +259,45 @@ class PushupPredictor:
         if not results.pose_landmarks:
             return {
                 "pose_detected": False,
-                "label":         "no_pose",
-                "confidence":    0.0,
-                "feedback":      "",
-                "count_rep":     False,
-                "proba":         {},
-                "elbow_angle":   None,
-                "landmarks":     None,
+                "label": "no_pose",
+                "feedback": "",
+                "elbow_angle": None,
+                "landmarks": None,
                 **self.counter.to_dict(),
             }
 
-        lm_list = self.landmarks_to_list(results.pose_landmarks)
-        vec   = self.landmarks_to_vector(lm_list)
-        proba = model.predict_proba(vec)
-        idx   = int(np.argmax(proba))
+        feat_dict = landmarks_to_feature_dict(results.pose_landmarks)
+        elbow_avg_deg = feat_dict.get("elbow_angle_avg", 999.0) if feat_dict else None
 
-        self.pred_buffer.append(idx)
-        if len(self.pred_buffer) > SMOOTH_N:
-            self.pred_buffer.pop(0)
-        smooth_idx = max(set(self.pred_buffer), key=self.pred_buffer.count)
+        if feat_dict is not None:
+            vec = build_feature_vector(feat_dict, feature_columns)
+            proba = model.predict_proba(vec)
+            idx = int(np.argmax(proba))
 
-        label      = le.inverse_transform([smooth_idx])[0]
-        confidence = float(proba[0][smooth_idx])
-# ---------------------------------------------------------
-        # 🟢 เพิ่ม RULE ตรงนี้: ปิดตา AI ไม่ให้จับผิดตอนเราพัก/แขนตึง
-        # ---------------------------------------------------------
-        if self.counter.state == "UP":
-            label = "pushup_good"  # บังคับส่งผลให้หน้าเว็บว่าทำถูกอยู่
-        # --------------------------------------------------------
-        elif self.counter.state == "DOWN":
-            lms = results.pose_landmarks.landmark
-            
-            # 1. แกล้งก้มคอ (Neck Down Hack)
-            NOSE = 0
-            SHOULDER = 11  # ไหล่ซ้าย
-            # ถ้าจมูกอยู่ต่ำกว่าไหล่มากเกินไป (แกน Y ในคอม ยิ่งลงล่างค่ายิ่งมาก)
-            if lms[NOSE].y > lms[SHOULDER].y + 0.15:
-                label = "pushup_bad_neck"
-                confidence = 0.99  # บังคับให้ผ่าน Threshold
+            self.pred_buffer.append(idx)
+            if len(self.pred_buffer) > SMOOTH_N:
+                self.pred_buffer.pop(0)
 
-            # 2. แกล้งหลังแอ่น (Bad Back Hack)
-# 2. แกล้งหลังแอ่น (Bad Back Hack - ฉลาดขึ้น!)
-            SHOULDER = 11  # ไหล่ซ้าย
-            HIP = 23       # สะโพก
-            KNEE = 25      # เข่า
-            
-            # คำนวณ "จุดกึ่งกลาง" ระหว่างไหล่กับเข่า (หลังที่ตรง สะโพกควรอยู่แถวๆ นี้)
-            expected_hip_y = (lms[SHOULDER].y + lms[KNEE].y) / 2
-            
-            # ถ้าระดับสะโพกจริง ห้อยต่ำกว่าจุดกึ่งกลางมากเกินไป (ค่า Y ในจอคอมยิ่งมากลงล่าง)
-            # 🟢 ตัวเลข 0.08 คือ "ระยะหยวนๆ" ปรับให้มาก/น้อยได้ตามมุมกล้องครับ
-            if lms[HIP].y > expected_hip_y + 0.055:
-                label = "pushup_bad_back"
-                confidence = 0.99  # บังคับให้ผ่าน Threshold
-        new_rep  = self.counter.update(lm_list, label, confidence)
-        cfg      = CLASS_CONFIG.get(label, DEFAULT_CONFIG)
-        feedback = cfg["feedback"] if label != "pushup_good" else ""
+            smooth_idx = max(set(self.pred_buffer), key=self.pred_buffer.count)
+            label = le.inverse_transform([smooth_idx])[0]
+            confidence = float(proba[0][smooth_idx])
 
-        elbow_angle = self.counter._elbow_angle(lm_list)
-        proba_dict = {cls: float(proba[0][i]) for i, cls in enumerate(le.classes_)}
+            self.counter.update(label, feat_dict)
+        else:
+            label = "no_pose"
+            confidence = 0.0
+
+        cfg = CLASS_CONFIG.get(label, DEFAULT_CONFIG)
+        proba_dict = {cls: float(proba[0][i]) for i, cls in enumerate(le.classes_)} if feat_dict else {}
 
         return {
             "pose_detected": True,
-            "label":       label,
-            "confidence":  confidence,
-            "feedback":    feedback,
-            "count_rep":   cfg["count_rep"],
-            "proba":       proba_dict,
-            "elbow_angle": elbow_angle,
-            "landmarks":   lm_list,
+            "label": label,
+            "confidence": confidence,
+            "feedback": cfg["feedback"],
+            "proba": proba_dict,
+            "elbow_angle": elbow_avg_deg,
+            "landmarks": self.landmarks_to_list(results.pose_landmarks),
             **self.counter.to_dict(),
         }
 
