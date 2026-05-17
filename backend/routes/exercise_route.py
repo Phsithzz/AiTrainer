@@ -144,3 +144,59 @@ def get_workouts(user_id: int = Depends(get_current_user_id)):
         cursor.close()
         conn.close()
     return records
+
+@router.get("/dashboard")
+def get_dashboard(user_id: int = Depends(get_current_user_id)):
+    conn = psycopg2.connect(DB_URL)
+    cursor = conn.cursor()
+    
+    try:
+        # 🟢 1. สถิติรวมของ User คนนี้ (Total Reps, Average Accuracy)
+        cursor.execute("""
+            SELECT SUM(reps), AVG(accuracy) 
+            FROM workouts WHERE user_id = %s
+        """, (user_id,))
+        user_stats = cursor.fetchone()
+        user_reps = user_stats[0] or 0
+        user_acc = round(user_stats[1] or 0, 2)
+
+        # 🟢 2. สถิติเฉลี่ยของ "คนทั้งเซิร์ฟเวอร์" (Global Comparison)
+        cursor.execute("SELECT AVG(reps), AVG(accuracy) FROM workouts")
+        global_stats = cursor.fetchone()
+        global_avg_reps = round(global_stats[0] or 0, 2)
+        global_avg_acc = round(global_stats[1] or 0, 2)
+
+        # 🟢 3. หาจุดอ่อนของผู้ใช้ (ท่าที่ผิดบ่อยสุด) โดยดึงจาก bad_details
+        cursor.execute("""
+            SELECT bad_details FROM workouts WHERE user_id = %s AND bad > 0
+        """, (user_id,))
+        bad_records = cursor.fetchall()
+        
+        weakness_counts = {}
+        for record in bad_records:
+            details = record[0] # มันคือ dictionary
+            for key, val in details.items():
+                weakness_counts[key] = weakness_counts.get(key, 0) + val
+                
+        # จัดเรียงหาท่าที่ผิดเยอะสุด
+        top_weakness = sorted(weakness_counts.items(), key=lambda x: x[1], reverse=True)
+
+    finally:
+        cursor.close()
+        conn.close()
+
+    return {
+        "my_stats": {
+            "total_reps": user_reps,
+            "average_accuracy": user_acc,
+            "weaknesses": top_weakness # เช่น [("pushup_bad_back", 15), ("pushup_bad_neck", 5)]
+        },
+        "global_stats": {
+            "average_reps": global_avg_reps,
+            "average_accuracy": global_avg_acc
+        },
+        "comparison": {
+            "is_above_average_reps": user_reps > global_avg_reps,
+            "is_above_average_acc": user_acc > global_avg_acc
+        }
+    }

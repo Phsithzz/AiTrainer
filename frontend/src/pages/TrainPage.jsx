@@ -120,7 +120,8 @@ const handleStart = () => {
         good: isTimer ? 0 : good,
         bad: isTimer ? 0 : bad,
         accuracy: isTimer ? 0:calculatedAccuracy, // หรือใส่สูตรคำนวณ accuracy (good / totalAttempts * 100)
-        total_time: isTimer ? totalTime : 0.0
+        total_time: isTimer ? totalTime : 0.0,
+        bad_details: result?.bad_details || {}
       };
 
       console.log("sessionResult:", sessionResult);
