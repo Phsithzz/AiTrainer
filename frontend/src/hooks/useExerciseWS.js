@@ -10,6 +10,7 @@ const POSE_CONNECTIONS = [
   [15, 17], [15, 19], [15, 21], [16, 18], [16, 20], [16, 22],
 ];
 
+// 🟢 อัปเดต Label ให้ตรงกับ Model ฝั่ง Backend ทั้ง 3 ท่า
 export const EXERCISE_CONFIG = {
   squat: {
     wsPath:  "squat",
@@ -18,19 +19,16 @@ export const EXERCISE_CONFIG = {
       squat_good:     "#00ff88",
       squat_bad_heel: "#ff9500",
       squat_bad_back: "#ff3b30",
-      squat_bad_foot: "#bf5af2",
     },
     labelText: {
       squat_good:     "เยี่ยมมาก ทรงตัวได้ดี",
-      squat_bad_heel: "ส้นเท้าลอย! ถ่ายน้ำหนักลงส้นเท้า แล้วดันสะโพกไปด้านหลัง",
-      squat_bad_back: "หลังโค้ง! ยืดอกขึ้น เกร็งหน้าท้อง และมองตรง",
-      squat_bad_foot: "ปลายเท้าลอย! วางเท้าให้เต็มพื้นเพื่อรักษาความสมดุล",
+      squat_bad_heel: "ส้นเท้าลอย! ถ่ายน้ำหนักลงส้นเท้า",
+      squat_bad_back: "หลังโค้ง! ยืดอกขึ้น เกร็งหน้าท้อง",
     },
     probaKeys: [
       { key: "squat_good",     label: "GOOD",      color: "#00ff88" },
-      { key: "squat_bad_heel", label: "HEEL UP",   color: "#ff9500" },
-      { key: "squat_bad_back", label: "BACK BENT", color: "#ff3b30" },
-      { key: "squat_bad_foot", label: "FEET UP",   color: "#bf5af2" },
+      { key: "squat_bad_heel", label: "BAD HEEL",  color: "#ff9500" },
+      { key: "squat_bad_back", label: "BAD BACK",  color: "#ff3b30" },
     ],
     mode: "reps", 
     instructionText: "ในท่า squat ให้คุณกางเท้าเท่าช่วงหัวไหล่ ย่อตัวลงโดยให้หลังตรงและส้นเท้าติดพื้น",
@@ -40,39 +38,45 @@ export const EXERCISE_CONFIG = {
     accent:  "#ff6b35",
     labelColors: {
       pushup_good:     "#ff6b35",
-      pushup_bad_neck: "#ff9500",
-      pushup_bad_back: "#ff3b30",
+      pushup_bad_hips: "#ff9500", // 🟢 อัปเดตตามโมเดลใหม่
+      pushup_bad_legs: "#ff3b30", // 🟢 อัปเดตตามโมเดลใหม่
+      pushup_bad_neck: "#bf5af2", // 🟢 อัปเดตตามโมเดลใหม่
     },
     labelText: {
       pushup_good:     "ดีมาก รักษาจังหวะไว้",
-      pushup_bad_neck: "อย่าก้มหน้า! เงยหน้าขึ้นเล็กน้อย มองตรงไปที่พื้นด้านหน้า",
-      pushup_bad_back: "หลังแอ่น! เกร็งหน้าท้องและขมิบก้น เพื่อล็อคหลังให้ตรง",
+      pushup_bad_hips: "สะโพกยกหรือห้อย! ล็อคแกนกลางลำตัวให้ตรง",
+      pushup_bad_legs: "ขางอ! เหยียดขาให้ตึงตลอดเวลา",
+      pushup_bad_neck: "อย่าก้มหน้า! เงยหน้าขึ้นมองที่พื้นด้านหน้า",
     },
     probaKeys: [
       { key: "pushup_good",     label: "GOOD",      color: "#ff6b35" },
-      { key: "pushup_bad_neck", label: "BAD NECK",  color: "#ff9500" },
-      { key: "pushup_bad_back", label: "BACK BENT", color: "#ff3b30" },
+      { key: "pushup_bad_hips", label: "BAD HIPS",  color: "#ff9500" },
+      { key: "pushup_bad_legs", label: "BAD LEGS",  color: "#ff3b30" },
+      { key: "pushup_bad_neck", label: "BAD NECK",  color: "#bf5af2" },
     ],
     mode: "reps",
-    instructionText: "ในท่า pushup ให้คุณวางมือให้กว้างกว่าช่วงไหล่เล็กน้อย ลำตัวตรงตั้งแต่วันที่ถึงส้นเท้า",
+    instructionText: "ในท่า pushup ให้คุณวางมือกว้างกว่าช่วงไหล่เล็กน้อย ลำตัวตรงตั้งแต่หัวถึงส้นเท้า",
   },
   plank: {
     wsPath:  "plank",
     accent:  "#a855f7",
     labelColors: {
       plank_good:     "#a855f7",
-      plank_bad_back: "#ff3b30",
-      plank_bad_hip:  "#ff9500",
+      plank_bad_hips: "#ff9500", // 🟢 อัปเดตตามโมเดลใหม่
+      plank_bad_legs: "#ff3b30", // 🟢 อัปเดตตามโมเดลใหม่
+      plank_bad_neck: "#bf5af2", // 🟢 อัปเดตตามโมเดลใหม่
     },
     labelText: {
       plank_good:     "ฟอร์มสวยมาก เกร็งค้างไว้",
-      plank_bad_back: "หลังแอ่นลง! เกร็งหน้าท้องและม้วนสะโพกขึ้นเล็กน้อย",
-      plank_bad_hip:  "สะโพกโด่งเกินไป! ลดสะโพกลงให้ลำตัวขนานกับพื้น",
+      plank_bad_hips: "สะโพกโด่งหรือตก! เกร็งหน้าท้องให้ลำตัวขนานกับพื้น",
+      plank_bad_legs: "เข่างอ! เหยียดขาและเกร็งต้นขาให้ตึง",
+      plank_bad_neck: "ก้มหรือเงยหัวเกินไป! มองตรงไปที่มือตัวเอง",
     },
     probaKeys: [
       { key: "plank_good",     label: "GOOD",      color: "#a855f7" },
-      { key: "plank_bad_back", label: "BACK BENT", color: "#ff3b30" },
-      { key: "plank_bad_hip",  label: "HIP HIGH",  color: "#ff9500" },
+      { key: "plank_bad_hips", label: "BAD HIPS",  color: "#ff9500" },
+      { key: "plank_bad_legs", label: "BAD LEGS",  color: "#ff3b30" },
+      { key: "plank_bad_neck", label: "BAD NECK",  color: "#bf5af2" },
     ],
     mode: "timer",
     instructionText: "ในท่า plank ให้คุณวางศอกลงกับพื้น เกร็งหน้าท้องและรักษาแนวลำตัวให้ขนานกับพื้น",
@@ -81,36 +85,36 @@ export const EXERCISE_CONFIG = {
 
 export function useExerciseWS(exercise, videoRef, overlayCanvasRef, active, isTracking = true) {
 
-
   const wsRef       = useRef(null);
   const intervalRef = useRef(null);
   const sendingRef  = useRef(false);
-// 🟢 1. เพิ่มตัวแปรสำหรับหน่วงเวลาเสียง (Cooldown 3 วินาที)
   const lastAudioTime = useRef(0);
+  
   const [result, setResult]     = useState(null);
   const [wsStatus, setWsStatus] = useState("disconnected");
 
   const cfg = EXERCISE_CONFIG[exercise] || EXERCISE_CONFIG.squat;
-const isTrackingRef = useRef(isTracking);
+  const isTrackingRef = useRef(isTracking);
+  
   useEffect(() => { isTrackingRef.current = isTracking; }, [isTracking]); 
+  
   const speakWarning = useCallback((label) => {
-    // ถ้าไม่มี label หรือไม่ได้เป็นท่าที่ผิด (ไม่มีคำว่า bad) ให้ข้ามไป
     if (!label || !label.includes("_bad_")) return;
 
     const now = Date.now();
-    // หน่วงเวลาไม่ให้พูดรัวๆ (3000 ms = 3 วินาที)
     if (now - lastAudioTime.current > 3000) {
-      // ดึงข้อความจาก config เช่น "BACK BENT", "HEEL UP"
       const textToSpeak = cfg.labelText[label] || "Bad form";
       
       const utterance = new SpeechSynthesisUtterance(textToSpeak);
-      utterance.lang = "en-US"; // ใช้สำเนียงอังกฤษ เพราะ Text เป็นภาษาอังกฤษ
-      utterance.rate = 0.85;     // ปรับให้พูดเร็วขึ้นนิดนึง
+      // 🟢 แก้จาก en-US เป็น th-TH เพื่อให้อ่านคำแนะนำภาษาไทยชัดเจน
+      utterance.lang = "th-TH"; 
+      utterance.rate = 1.0;     // ปรับความเร็วให้พอดี
       
       window.speechSynthesis.speak(utterance);
       lastAudioTime.current = now;
     }
   }, [cfg]);
+
   // ── วาด skeleton ──────────────────────────────────────────────────────────
   const drawSkeleton = useCallback((landmarks, color) => {
     const canvas = overlayCanvasRef.current;
@@ -125,8 +129,7 @@ const isTrackingRef = useRef(isTracking);
 
     const W = canvas.width;
     const H = canvas.height;
-    // โค้ดที่แก้ไขแล้ว
-const toXY = (lm) => ({ x: lm.x * W, y: lm.y * H });
+    const toXY = (lm) => ({ x: lm.x * W, y: lm.y * H });
 
     ctx.lineWidth   = 3;
     ctx.strokeStyle = color + "cc";
@@ -172,7 +175,6 @@ const toXY = (lm) => ({ x: lm.x * W, y: lm.y * H });
     return tmp.toDataURL("image/jpeg", 0.7);
   }, [videoRef]);
 
-  
   // ── WebSocket ─────────────────────────────────────────────────────────────
   const connectWS = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
@@ -222,7 +224,7 @@ const toXY = (lm) => ({ x: lm.x * W, y: lm.y * H });
     intervalRef.current = setInterval(() => {
       if (!isTrackingRef.current || sendingRef.current) return;
       if (wsRef.current?.readyState !== WebSocket.OPEN) return;
-     
+      
       const b64 = captureFrame();
       if (!b64) return;
       sendingRef.current = true;
@@ -238,10 +240,9 @@ const toXY = (lm) => ({ x: lm.x * W, y: lm.y * H });
   }, [clearCanvas]);
 
   // ── main effect ───────────────────────────────────────────────────────────
-
   useEffect(() => {
     if (active) {
-      connectWS(); // เชื่อม WebSocket อย่างเดียว ไม่ต้องเปิดกล้องใหม่แล้ว
+      connectWS(); 
       
       const t = setInterval(() => {
         if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -261,5 +262,3 @@ const toXY = (lm) => ({ x: lm.x * W, y: lm.y * H });
 
   return { result, wsStatus, resetSession, cfg };
 }
-
-  
