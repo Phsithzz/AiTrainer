@@ -37,6 +37,7 @@ export default function App() {
          <Route path="/login" element={<LoginPage onLogin={() => setIsLoggedIn(true)} />} />
           <Route path="/register"        element={<RegisterPage />} />
           <Route path="*"               element={<NotFoundPage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
         </Routes>
       </div>
     </BrowserRouter>
