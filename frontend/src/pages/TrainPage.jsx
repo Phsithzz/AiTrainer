@@ -71,7 +71,7 @@ const handleStart = () => {
   const textToSpeak = cfg.instructionText || "Get ready";
   const utterance = new SpeechSynthesisUtterance(textToSpeak);
   utterance.lang = "th-TH";
-  utterance.rate = 1.0;
+  utterance.rate = 0.85;
 
   // 🏁 จุดสำคัญ: เมื่อพูดจบแล้วค่อยเริ่มนับถอยหลัง 5 วินาที
   utterance.onend = () => {
@@ -431,11 +431,11 @@ const handleStart = () => {
                     // จังหวะที่ 1: กำลังพูดอธิบาย + โชว์วิดีโอตัวอย่าง
                     <>
                       {/* กรอบแสดงภาพ/วิดีโอตัวอย่าง */}
-                      <div className="w-64 md:w-80 aspect-video bg-black rounded-2xl overflow-hidden border-2 border-white/20 mb-8 shadow-[0_0_30px_rgba(255,255,255,0.1)]">
+                      <div className="w-96 md:w-[32rem] aspect-video bg-black rounded-2xl overflow-hidden border-2 border-white/20 mb-8 shadow-[0_0_30px_rgba(255,255,255,0.1)]">
                         <img 
                           src={`/src/assets/images/${exercise}_ref.gif`} 
                           alt={`${exercise} reference`}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-contain "
                         />
                       </div>
 

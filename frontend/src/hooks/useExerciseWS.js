@@ -21,10 +21,10 @@ export const EXERCISE_CONFIG = {
       squat_bad_foot: "#bf5af2",
     },
     labelText: {
-      squat_good:     "GOOD FORM",
-      squat_bad_heel: "HEEL UP",
-      squat_bad_back: "BACK BENT",
-      squat_bad_foot: "FEET UP",
+      squat_good:     "เยี่ยมมาก ทรงตัวได้ดี",
+      squat_bad_heel: "ส้นเท้าลอย! ถ่ายน้ำหนักลงส้นเท้า แล้วดันสะโพกไปด้านหลัง",
+      squat_bad_back: "หลังโค้ง! ยืดอกขึ้น เกร็งหน้าท้อง และมองตรง",
+      squat_bad_foot: "ปลายเท้าลอย! วางเท้าให้เต็มพื้นเพื่อรักษาความสมดุล",
     },
     probaKeys: [
       { key: "squat_good",     label: "GOOD",      color: "#00ff88" },
@@ -32,8 +32,8 @@ export const EXERCISE_CONFIG = {
       { key: "squat_bad_back", label: "BACK BENT", color: "#ff3b30" },
       { key: "squat_bad_foot", label: "FEET UP",   color: "#bf5af2" },
     ],
-    instructionText: "กางเท้าเท่าช่วงหัวไหล่ ย่อตัวลงโดยให้หลังตรงและส้นเท้าติดพื้น",
-    mode: "reps",   // "reps" | "timer"
+    mode: "reps", 
+    instructionText: "ในท่า squat ให้คุณกางเท้าเท่าช่วงหัวไหล่ ย่อตัวลงโดยให้หลังตรงและส้นเท้าติดพื้น",
   },
   pushup: {
     wsPath:  "pushup",
@@ -44,17 +44,17 @@ export const EXERCISE_CONFIG = {
       pushup_bad_back: "#ff3b30",
     },
     labelText: {
-      pushup_good:     "GOOD FORM",
-      pushup_bad_neck: "NECK DOWN",
-      pushup_bad_back: "BACK BENT",
+      pushup_good:     "ดีมาก รักษาจังหวะไว้",
+      pushup_bad_neck: "อย่าก้มหน้า! เงยหน้าขึ้นเล็กน้อย มองตรงไปที่พื้นด้านหน้า",
+      pushup_bad_back: "หลังแอ่น! เกร็งหน้าท้องและขมิบก้น เพื่อล็อคหลังให้ตรง",
     },
     probaKeys: [
       { key: "pushup_good",     label: "GOOD",      color: "#ff6b35" },
-      { key: "pushup_bad_neck", label: "BAD NECK ", color: "#ff9500" },
+      { key: "pushup_bad_neck", label: "BAD NECK",  color: "#ff9500" },
       { key: "pushup_bad_back", label: "BACK BENT", color: "#ff3b30" },
     ],
-    instructionText: "วางมือให้กว้างกว่าช่วงไหล่เล็กน้อย ลำตัวตรงตั้งแต่วันที่ถึงส้นเท้า",
     mode: "reps",
+    instructionText: "ในท่า pushup ให้คุณวางมือให้กว้างกว่าช่วงไหล่เล็กน้อย ลำตัวตรงตั้งแต่วันที่ถึงส้นเท้า",
   },
   plank: {
     wsPath:  "plank",
@@ -65,17 +65,17 @@ export const EXERCISE_CONFIG = {
       plank_bad_hip:  "#ff9500",
     },
     labelText: {
-      plank_good:     "GOOD FORM",
-      plank_bad_back: "BACK BENT",
-      plank_bad_hip:  "HIP HIGH",
+      plank_good:     "ฟอร์มสวยมาก เกร็งค้างไว้",
+      plank_bad_back: "หลังแอ่นลง! เกร็งหน้าท้องและม้วนสะโพกขึ้นเล็กน้อย",
+      plank_bad_hip:  "สะโพกโด่งเกินไป! ลดสะโพกลงให้ลำตัวขนานกับพื้น",
     },
     probaKeys: [
       { key: "plank_good",     label: "GOOD",      color: "#a855f7" },
       { key: "plank_bad_back", label: "BACK BENT", color: "#ff3b30" },
       { key: "plank_bad_hip",  label: "HIP HIGH",  color: "#ff9500" },
     ],
-    instructionText: "วางศอกลงกับพื้น เกร็งหน้าท้องและรักษาแนวลำตัวให้ขนานกับพื้น",
-    mode: "timer",  // plank ใช้จับเวลา ไม่นับ rep
+    mode: "timer",
+    instructionText: "ในท่า plank ให้คุณวางศอกลงกับพื้น เกร็งหน้าท้องและรักษาแนวลำตัวให้ขนานกับพื้น",
   },
 };
 
@@ -105,7 +105,7 @@ const isTrackingRef = useRef(isTracking);
       
       const utterance = new SpeechSynthesisUtterance(textToSpeak);
       utterance.lang = "en-US"; // ใช้สำเนียงอังกฤษ เพราะ Text เป็นภาษาอังกฤษ
-      utterance.rate = 1.1;     // ปรับให้พูดเร็วขึ้นนิดนึง
+      utterance.rate = 0.85;     // ปรับให้พูดเร็วขึ้นนิดนึง
       
       window.speechSynthesis.speak(utterance);
       lastAudioTime.current = now;
