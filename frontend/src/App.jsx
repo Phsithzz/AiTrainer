@@ -7,6 +7,7 @@ import NotFoundPage from "./pages/NotFoundPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import { useHistory } from "./hooks/useHistory";
+import DashboardPage from "./pages/DashoardPage";
 
 export default function App() {
   const { history, fetchHistory, saveWorkout, isLoading } = useHistory();

@@ -151,6 +151,19 @@ export default function SelectPage() {
           >
             HISTORY
           </button>
+
+              <button
+            onClick={() => navigate("/dashboard")}
+            className="text-xs tracking-widest text-white/60 cursor-pointer 
+            hover:text-white 
+            transition-colors 
+            border border-white 
+            hover:border-white/30 px-4 py-2 rounded
+            shadow-[2px_2px_0px_white]
+            "
+          >
+            DashBoard
+          </button>
           {token ? (
             <button
               onClick={() => setShowLogoutModal(true)}
