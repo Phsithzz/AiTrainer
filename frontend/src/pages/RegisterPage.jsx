@@ -24,11 +24,22 @@ export default function RegisterPage() {
   const strengthLabel = ['', 'อ่อนมาก', 'พอใช้', 'ดี', 'แข็งแกร่ง']
   const sc = getStrength(password)
 
-  const handleSubmit = async (e) => {
+const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!/^[a-z0-9_]{3,20}$/.test(username)) return
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return
-    if (password.length < 8 || password !== confirmPw || !agreed) return
+    
+    // 🟢 แนะนำให้ใส่ setError เพื่อให้มันแจ้งเตือนผู้ใช้บนจอ แทนที่จะ return เงียบๆ
+    if (!/^[a-z0-9_]{3,20}$/.test(username)) {
+      return alert("ชื่อผู้ใช้ต้องมี 3-20 ตัวอักษร และห้ามใช้เว้นวรรค/อักขระพิเศษ");
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return alert("รูปแบบอีเมลไม่ถูกต้อง");
+    }
+    
+    // 🟢 ลบ || !agreed ออกไปเลยครับ
+    if (password.length < 8 || password !== confirmPw) {
+      return alert("รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร และตรงกันทั้ง 2 ช่อง");
+    }
+
     const ok = await register(username, email, password)
     if (ok) setSuccess(true)
   }
