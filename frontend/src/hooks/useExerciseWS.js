@@ -102,13 +102,15 @@ export function useExerciseWS(exercise, videoRef, overlayCanvasRef, active, isTr
     if (!label || !label.includes("_bad_")) return;
 
     const now = Date.now();
-    if (now - lastAudioTime.current > 3000) {
+    if (now - lastAudioTime.current > 4000 && !window.speechSynthesis.speaking) {
+
+      window.speechSynthesis.cancel();
       const textToSpeak = cfg.labelText[label] || "Bad form";
       
       const utterance = new SpeechSynthesisUtterance(textToSpeak);
       // 🟢 แก้จาก en-US เป็น th-TH เพื่อให้อ่านคำแนะนำภาษาไทยชัดเจน
       utterance.lang = "th-TH"; 
-      utterance.rate = 1.0;     // ปรับความเร็วให้พอดี
+      utterance.rate = 0.9;     // ปรับความเร็วให้พอดี
       
       window.speechSynthesis.speak(utterance);
       lastAudioTime.current = now;
@@ -215,7 +217,7 @@ export function useExerciseWS(exercise, videoRef, overlayCanvasRef, active, isTr
     wsRef.current      = null;
     sendingRef.current = false;
     setWsStatus("disconnected");
-    
+    window.speechSynthesis.cancel();
     clearCanvas();
   }, [clearCanvas]);
 

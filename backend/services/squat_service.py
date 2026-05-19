@@ -16,6 +16,7 @@ try:
     feature_columns = bundle["feature_columns"]
     print(f"✓ โหลด squat bundle สำเร็จ | Classes: {list(le.classes_)}")
 except Exception as e:
+    raise RuntimeError(f"🚨 โหลดโมเดล SQUAT ไม่สำเร็จ! กรุณาเช็คว่ามีไฟล์ {BUNDLE_PATH} อยู่จริงหรือไม่ (Error: {e})")
     print(f"[ERROR] โหลด Model Bundle ไม่สำเร็จ: {e}")
 
 # ── MediaPipe Constants ───────────────────────────────────────────────────────
