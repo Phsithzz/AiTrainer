@@ -224,6 +224,25 @@ class RepCounter:
             "state": self.state,
         }
 
+# 🟢 ด่านตรวจว่ายืนเต็มกล้องแล้วหรือยัง
+def is_body_fully_visible(landmarks, exercise):
+    lm = landmarks.landmark
+    threshold = 0.5 # ความมั่นใจของกล้องต้องเกิน 50%
+    
+    if exercise == "squat":
+        # Squat: ต้องเห็น ไหล่(11,12), สะโพก(23,24), เข่า(25,26), ข้อเท้า(27,28) ชัดเจน
+        left_ready = lm[11].visibility > threshold and lm[23].visibility > threshold and lm[25].visibility > threshold and lm[27].visibility > threshold
+        right_ready = lm[12].visibility > threshold and lm[24].visibility > threshold and lm[26].visibility > threshold and lm[28].visibility > threshold
+        return left_ready or right_ready
+        
+    elif exercise in ["pushup", "plank"]:
+        # Pushup/Plank: ต้องเห็น ไหล่, ศอก(13,14), ข้อมือ(15,16), สะโพก, ข้อเท้า
+        left_ready = lm[11].visibility > threshold and lm[13].visibility > threshold and lm[15].visibility > threshold and lm[23].visibility > threshold and lm[27].visibility > threshold
+        right_ready = lm[12].visibility > threshold and lm[14].visibility > threshold and lm[16].visibility > threshold and lm[24].visibility > threshold and lm[28].visibility > threshold
+        return left_ready or right_ready
+        
+    return False
+
 # ── API Predictor (เชื่อม WebSockets) ──────────────────────────────────────────
 class PushupPredictor:
     def __init__(self):
@@ -263,6 +282,16 @@ class PushupPredictor:
                 "feedback": "",
                 "elbow_angle": None,
                 "landmarks": None,
+                **self.counter.to_dict(),
+            }
+        # 🟢 2. ด่านตรวจใหม่: ถ้าเห็นคนแต่ "เห็นไม่เต็มตัว" ให้หยุดแค่นี้ ห้ามนับ!
+        # (อย่าลืมเปลี่ยนคำว่า "squat" เป็น "pushup" หรือ "plank" ตามไฟล์ที่คุณแก้อยู่ด้วยนะครับ)
+        if not is_body_fully_visible(results.pose_landmarks, "pushup"):
+            return {
+                "pose_detected": False,  # บังคับหน้าเว็บให้โชว์ว่า "ไม่พบท่าทาง — ยืนหน้ากล้อง"
+                "label": "no_pose",
+                "feedback": "",
+                "landmarks": self.landmarks_to_list(results.pose_landmarks), # ส่งก้างปลาไปให้ดูระยะ
                 **self.counter.to_dict(),
             }
 
