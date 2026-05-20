@@ -181,7 +181,7 @@ const handleStart = () => {
       <div className="flex-1 flex flex-col lg:flex-row">
         {/* ── Camera ── */}
         <div className="relative flex-1 p-4 lg:p-8 bg-black flex items-center justify-center min-h-90">
-          <div className="relative w-full max-w-5xl aspect-video bg-black rounded-xl overflow-hidden shadow-2xl border-4 border-white  flex items-center justify-center">
+          <div className="relative w-full max-w-7xl aspect-video bg-black rounded-xl overflow-hidden shadow-2xl border-4 border-white  flex items-center justify-center">
             <video
               ref={videoRef}
               autoPlay
