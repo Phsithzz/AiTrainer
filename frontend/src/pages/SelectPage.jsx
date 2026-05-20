@@ -51,7 +51,8 @@ export default function SelectPage() {
   const handleLogout = async () => {
       setShowLogoutModal(false);
     await logout(); // เรียก API blacklist token
-    navigate("/"); // redirect ไป login
+    window.location.href = '/login';
+    // navigate("/"); // redirect ไป login
   };
   const handleSelect = (ex) => {
     if (!ex.available) {
