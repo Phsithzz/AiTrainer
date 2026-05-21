@@ -316,7 +316,7 @@ class PlankPredictor:
                 "label": "no_pose",
                 "feedback": "",
                 "landmarks": self.landmarks_to_list(results.pose_landmarks), # ส่งก้างปลาไปให้ดูระยะ
-                **self.counter.to_dict(),
+                **self.timer.to_dict(),
             }
         feat_dict = landmarks_to_feature_dict(results.pose_landmarks)
         if feat_dict is not None:

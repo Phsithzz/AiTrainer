@@ -44,11 +44,24 @@ def get_workouts(user_id: int = Depends(get_current_user_id)):
     cursor = conn.cursor()
     try:
         cursor.execute(
-            "SELECT exercise, reps, good, bad, accuracy, total_time, created_at FROM workouts WHERE user_id = %s ORDER BY created_at DESC",
-            (user_id,)
+            "SELECT exercise, reps, good, bad, accuracy, bad_details, total_time, created_at FROM workouts WHERE user_id = %s ORDER BY created_at DESC",
+            (user_id,)  
         )
         columns = [desc[0] for desc in cursor.description]
-        records = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        rows = cursor.fetchall()
+        
+        records = []
+        for row in rows:
+            record = dict(zip(columns, row))
+            
+            # 🟢 ดักแปลง Data Parsing เป็น Object ให้ฝั่ง Frontend 
+            if "bad_details" in record and record["bad_details"]:
+                if isinstance(record["bad_details"], str):
+                    record["bad_details"] = json.loads(record["bad_details"])
+            else:
+                record["bad_details"] = {} 
+                
+            records.append(record)
     finally:
         cursor.close()
         conn.close()
@@ -84,9 +97,15 @@ def get_dashboard(user_id: int = Depends(get_current_user_id)):
         
         weakness_counts = {}
         for record in bad_records:
-            details = record[0] 
-            for key, val in details.items():
-                weakness_counts[key] = weakness_counts.get(key, 0) + val
+            details_raw = record[0] 
+            
+            # 🟢 เช็คความปลอดภัยก่อนแปลงข้อมูล
+            if details_raw:
+                # แปลงจาก string เป็น dict (ถ้ายังไม่เป็น)
+                details = json.loads(details_raw) if isinstance(details_raw, str) else details_raw
+                # ลูปนับคะแนนจุดอ่อน
+                for key, val in details.items():
+                    weakness_counts[key] = weakness_counts.get(key, 0) + val
                 
         top_weakness = sorted(weakness_counts.items(), key=lambda x: x[1], reverse=True)
 
