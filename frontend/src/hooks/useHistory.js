@@ -15,7 +15,7 @@ export function useHistory() {
         setIsLoading(true);
         try {
             // Axios ไม่ต้องใช้ await res.json() มันแปลงให้เลย
-            const res = await axios.get(`${API_URL}/workouts`, {
+            const res = await axios.get(`${API_URL}/exercise/workouts`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setHistory(res.data);
@@ -35,7 +35,7 @@ export function useHistory() {
         
         try {
             // Axios ส่ง Object เข้าไปได้เลย ไม่ต้องกำหนด Content-Type
-            const res = await axios.post(`${API_URL}/workouts`, exerciseData, {
+            const res = await axios.post(`${API_URL}/exercise/workouts`, exerciseData, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
