@@ -118,7 +118,7 @@ const handleStart = () => {
         exercise: exercise,
         reps: isTimer ? 0 : (totalAttempts > 0 ? totalAttempts : reps),
         good: isTimer ? 0 : good,
-        bad: isTimer ? 0 : bad,
+        bad: bad,
         accuracy: isTimer ? 0:calculatedAccuracy, // หรือใส่สูตรคำนวณ accuracy (good / totalAttempts * 100)
         total_time: isTimer ? totalTime : 0.0,
         bad_details: result?.bad_details || {}

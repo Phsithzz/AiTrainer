@@ -210,11 +210,7 @@ class HoldTimer:
         self.last_update_time = None
         self.is_holding = False
         self.bad_count = 0
-        self.bad_details = {
-            "plank_bad_hips": 0,
-            "plank_bad_legs": 0,
-            "plank_bad_neck": 0
-        }
+        self.bad_details = {}
         self._last_label = None
 
     def update(self, label: str, confidence: float) -> tuple[bool, str]:
@@ -232,8 +228,13 @@ class HoldTimer:
             self.is_holding = False
             self.last_update_time = None
             
-            # บันทึกประวัติท่าที่ผิด
-            if label in self.bad_details and label != self._last_label:
+# 🟢 ลอจิกใหม่สุดฉลาด: ขอแค่มีคำว่า _bad_ อยู่ในชื่อ และต้องไม่ซ้ำกับท่าเดิมที่ค้างอยู่
+            if "_bad_" in label and label != self._last_label:
+                # ถ้าไม่เคยมีท่านี้ในระบบ ให้สร้างกุญแจ (Key) ใหม่ขึ้นมาเป็น 0 ก่อน
+                if label not in self.bad_details:
+                    self.bad_details[label] = 0
+                
+                # บวกคะแนนความผิด
                 self.bad_details[label] += 1
                 self.bad_count += 1
                 is_new_bad = True
@@ -246,7 +247,7 @@ class HoldTimer:
             "total_time": round(self.total_accumulated, 1), # ส่งกลับไปแสดงที่ React
             "is_holding": self.is_holding,
             "bad_count": self.bad_count,
-            "bad_details": {k: v for k, v in self.bad_details.items() if v > 0}
+            "bad_details": self.bad_details
         }
 
 # 🟢 ด่านตรวจว่ายืนเต็มกล้องแล้วหรือยัง
