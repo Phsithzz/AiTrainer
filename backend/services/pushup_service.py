@@ -174,6 +174,7 @@ def build_feature_vector(feat_dict: dict, feature_cols: list) -> np.ndarray:
     return np.array(vec, dtype=np.float32).reshape(1, -1)
 
 # ── Rep Counter (ปรับปรุงให้เก็บ Dashboard Data) ─────────────────────────────
+# ── Rep Counter (ปรับปรุงให้เก็บ Dashboard Data และกันนับเบิ้ล) ───────────────
 class RepCounter:
     UP_THRESHOLD   = 155 
     DOWN_THRESHOLD = 110 
@@ -186,33 +187,43 @@ class RepCounter:
         self.state      = "UP" 
         self.good_count = 0
         self.bad_count  = 0
-        self.bad_details = {
-            "pushup_bad_hips": 0,
-            "pushup_bad_legs": 0,
-            "pushup_bad_neck": 0,
-        }
-        self._last_label = None
+        self.bad_details = {} # 🟢 ปล่อยว่างไว้ให้ Dynamic
+        self.current_rep_mistakes = set() # 🟢 ตะกร้าจดความผิดประจำรอบ
 
     def update(self, label: str, feat_dict: dict | None) -> bool:
         new_rep = False
 
-        # นับจังหวะท่าผิดแยกหมวดหมู่
-        if label in self.bad_details and label != self._last_label:
-            self.bad_details[label] += 1
-            self.bad_count += 1
+        # 🟢 1. ถ้า AI เห็นว่าผิดท่า ให้ "จด" ลงตะกร้าไว้ก่อน
+        if "_bad_" in label:
+            self.current_rep_mistakes.add(label)
 
         if feat_dict is not None:
             elbow_avg = feat_dict.get("elbow_angle_avg", 180.0)
+            
             if self.state == "UP" and elbow_avg < self.DOWN_THRESHOLD:
                 self.state = "DOWN"
+                
             elif self.state == "DOWN" and elbow_avg > self.UP_THRESHOLD:
                 self.state = "UP"
                 self.reps += 1
                 new_rep = True
-                if label == "pushup_good":
+                
+                # 🟢 2. เช็คบิลตอนจบรอบ (ดันตัวขึ้นสุด)
+                if len(self.current_rep_mistakes) > 0:
+                    self.bad_count += 1 # นับว่ารอบนี้แย่ (แค่ 1 ครั้ง)
+                    
+                    # แจกแจงว่ารอบนี้ทำอะไรผิดบ้างลงใน bad_details
+                    for mistake in self.current_rep_mistakes:
+                        if mistake not in self.bad_details:
+                            self.bad_details[mistake] = 0
+                        self.bad_details[mistake] += 1
+                else:
+                    # ถ้ารอบนี้ไม่มีข้อผิดพลาดในตะกร้าเลย แปลว่าเพอร์เฟกต์!
                     self.good_count += 1
 
-        self._last_label = label
+                # 🟢 3. เทตะกร้าทิ้ง เตรียมเริ่มนับรอบต่อไป
+                self.current_rep_mistakes.clear()
+
         return new_rep
 
     def to_dict(self) -> dict:
@@ -220,7 +231,7 @@ class RepCounter:
             "reps": self.reps,
             "good_count": self.good_count,
             "bad_count": self.bad_count,
-            "bad_details": {k: v for k, v in self.bad_details.items() if v > 0},
+            "bad_details": self.bad_details,
             "state": self.state,
         }
 

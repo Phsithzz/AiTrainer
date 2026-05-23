@@ -159,23 +159,21 @@ def build_feature_vector(feat_dict: dict, feature_cols: list) -> np.ndarray:
     return np.array(vec, dtype=np.float32).reshape(1, -1)
 
 # ── Rep Counter (โหวตแบบเพื่อน) ─────────────────────────────────────────────
+# ── Rep Counter (เปลี่ยนจาก Majority Vote เป็น Basket Logic) ──────────────────
 class RepCounter:
     DOWN_RATIO = 0.85 
     UP_RATIO   = 0.80 
-    MIN_DOWN_FRAMES = 5 
 
     def __init__(self):
         self.reset()
 
     def reset(self):
-        self.count = 0
+        self.reps = 0
+        self.good_count = 0
         self.bad_count = 0
         self.state = "UP"
-        self._down_labels = []
-        self.bad_details = {
-            "squat_bad_heel": 0,
-            "squat_bad_back": 0,
-        }
+        self.bad_details = {} # 🟢 ปล่อยว่างไว้ให้ Dynamic
+        self.current_rep_mistakes = set() # 🟢 ตะกร้าจดความผิดประจำรอบ
 
     def _hip_knee_ratio(self, landmarks) -> float:
         lm = landmarks.landmark
@@ -192,35 +190,46 @@ class RepCounter:
         new_rep = False
         rep_label = None
 
+        # 🟢 1. จดชื่อความผิดลงตะกร้า
+        if "_bad_" in label:
+            self.current_rep_mistakes.add(label)
+
         if self.state == "UP":
             if ratio >= self.DOWN_RATIO:
                 self.state = "DOWN"
-                self._down_labels = [label] 
+                
         elif self.state == "DOWN":
-            self._down_labels.append(label) 
             if ratio < self.UP_RATIO:
                 self.state = "UP"
-                if len(self._down_labels) >= self.MIN_DOWN_FRAMES:
-                    # โหวตท่าที่เกิดบ่อยสุดระหว่างทำ Squat 1 ครั้ง
-                    rep_label = max(set(self._down_labels), key=self._down_labels.count)
-                    if rep_label == "squat_good":
-                        self.count += 1
-                        new_rep = True
-                    else:
-                        self.bad_count += 1
-                        new_rep = True
-                        if rep_label in self.bad_details:
-                            self.bad_details[rep_label] += 1
-                self._down_labels = []
+                self.reps += 1
+                new_rep = True
+                
+                # 🟢 2. เช็คบิลตอนยืนขึ้นสุด
+                if len(self.current_rep_mistakes) > 0:
+                    self.bad_count += 1
+                    
+                    # สุ่มดึงชื่อ error ออกมา 1 ตัวเพื่อส่งไปเตือนหน้าจอ (Flash Message)
+                    rep_label = list(self.current_rep_mistakes)[0] 
+                    
+                    for mistake in self.current_rep_mistakes:
+                        if mistake not in self.bad_details:
+                            self.bad_details[mistake] = 0
+                        self.bad_details[mistake] += 1
+                else:
+                    self.good_count += 1
+                    rep_label = "squat_good"
+
+                # 🟢 3. เทตะกร้าทิ้ง
+                self.current_rep_mistakes.clear()
 
         return new_rep, rep_label
 
     def to_dict(self) -> dict:
         return {
-            "reps": self.count + self.bad_count, # รวม Reps ทั้งหมด (ดี+แย่) เพื่อให้สอดคล้องกับ Dashboard
-            "good_count": self.count,
+            "reps": self.reps, 
+            "good_count": self.good_count,
             "bad_count": self.bad_count,
-            "bad_details": {k: v for k, v in self.bad_details.items() if v > 0},
+            "bad_details": self.bad_details,
             "state": self.state,
         }
 

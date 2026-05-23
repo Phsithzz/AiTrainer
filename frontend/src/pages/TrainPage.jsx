@@ -479,7 +479,7 @@ const handleStart = () => {
         <div className="w-full lg:w-80 bg-[#0d0d14] border-t lg:border-t-0 lg:border-l border-white/5 flex flex-col">
           {/* main stat */}
           <div className="p-6 border-b border-white/5 text-center">
-            {isTimer ? (
+{isTimer ? (
               /* plank — timer */
               <>
                 <div className="text-xs tracking-[0.4em] text-white/30 mb-2">
@@ -513,39 +513,38 @@ const handleStart = () => {
                   {isHolding ? "HOLDING" : "REST"}
                 </div>
               </>
-            ) : (
-              /* squat/pushup — reps */
+) : (
+              /* 🟢 squat/pushup — reps (แก้ใหม่: เอาตัวเลขรวมออก โชว์แค่ Good/Bad แบบเน้นๆ) */
               <>
-                <div className="text-xs tracking-[0.4em] text-white/30 mb-2">
-                  REPS
+                <div className="text-xs tracking-[0.4em] text-white/30 mb-8">
+                  SESSION PROGRESS
                 </div>
-                <div
-                  className="text-8xl font-black leading-none transition-all duration-200"
-                  style={{
-                    fontFamily: "'Arial Black', sans-serif",
-                    color: reps > 0 ? "#fff" : "#333",
-                    textShadow: reps > 0 ? `0 0 40px ${accent}60` : "none",
-                  }}
-                >
-                  {reps}
-                </div>
-                <div className="flex gap-3 mt-4">
-                  <div className="flex-1 rounded-lg bg-white/5 py-3">
-                    <div className="text-[10px] tracking-widest text-[#00ff88]/60 mb-1">
+                
+                <div className="flex gap-4">
+                  {/* กล่อง GOOD (เน้นสีเขียว) */}
+                  <div className="flex-1 rounded-2xl bg-gradient-to-b from-[#00ff88]/10 to-transparent border border-[#00ff88]/20 py-6 shadow-[0_0_20px_rgba(0,255,136,0.05)]">
+                    <div className="text-[10px] font-black tracking-[0.2em] text-[#00ff88]/60 mb-2">
                       GOOD
                     </div>
-                    <div className="text-2xl font-black text-[#00ff88]">
+                    <div className="text-5xl font-black text-[#00ff88]">
                       {good}
                     </div>
                   </div>
-                  <div className="flex-1 rounded-lg bg-white/5 py-3">
-                    <div className="text-[10px] tracking-widest text-[#ff9500]/60 mb-1">
+                  
+                  {/* กล่อง BAD (เน้นสีส้ม) */}
+                  <div className="flex-1 rounded-2xl bg-gradient-to-b from-[#ff9500]/10 to-transparent border border-[#ff9500]/20 py-6 shadow-[0_0_20px_rgba(255,149,0,0.05)]">
+                    <div className="text-[10px] font-black tracking-[0.2em] text-[#ff9500]/60 mb-2">
                       BAD
                     </div>
-                    <div className="text-2xl font-black text-[#ff9500]">
+                    <div className="text-5xl font-black text-[#ff9500]">
                       {bad}
                     </div>
                   </div>
+                </div>
+                
+                {/* เพิ่มข้อความบอกสถานะเล็กๆ ด้านล่างให้ดูโปร */}
+                <div className="mt-6 text-[10px] tracking-widest text-white/20 uppercase">
+                  {good + bad === 0 ? "START YOUR WORKOUT" : "KEEP GOING"}
                 </div>
               </>
             )}

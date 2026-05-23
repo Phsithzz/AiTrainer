@@ -68,30 +68,64 @@ def get_workouts(user_id: int = Depends(get_current_user_id)):
     return records
 
 # ── 3. API: Dashboard ─────────────────────────────────────────────────────
+# ── 3. API: Dashboard ─────────────────────────────────────────────────────
 @router.get("/dashboard")
 def get_dashboard(user_id: int = Depends(get_current_user_id)):
     conn = psycopg2.connect(DB_URL)
     cursor = conn.cursor()
     
     try:
-        # สถิติรวมของ User
+        # 🟢 1. สถิติรวมของ User (แยกตามท่า)
         cursor.execute("""
-            SELECT SUM(reps), AVG(accuracy), SUM(total_time) 
-            FROM workouts WHERE user_id = %s
+            SELECT exercise, SUM(reps), AVG(accuracy), SUM(total_time) 
+            FROM workouts WHERE user_id = %s GROUP BY exercise
         """, (user_id,))
-        user_stats = cursor.fetchone()
-        user_reps = user_stats[0] or 0
-        user_acc = round(user_stats[1] or 0, 2)
-        user_time = round(user_stats[2] or 0, 1)
+        user_records = cursor.fetchall()
+        
+        # เตรียมกล่องเปล่าไว้ใส่ค่า
+        my_reps = {"squat": 0, "pushup": 0, "plank": 0}
+        my_acc  = {"squat": 0, "pushup": 0, "plank": 0}
+        my_time = {"squat": 0, "pushup": 0, "plank": 0}
+        total_reps_all = 0
+        total_time_all = 0
+        acc_list = []
+        
+        for row in user_records:
+            ex = row[0]
+            r = row[1] or 0
+            a = row[2] or 0
+            t = row[3] or 0
+            
+            if ex in my_reps:
+                my_reps[ex] = r
+                my_acc[ex]  = round(a, 2)
+                my_time[ex] = round(t, 1)
+            
+            total_reps_all += r
+            total_time_all += t
+            if a > 0: acc_list.append(a)
+            
+        overall_acc = round(sum(acc_list)/len(acc_list), 2) if acc_list else 0
 
-        # สถิติเฉลี่ยของ Global
-        cursor.execute("SELECT AVG(reps), AVG(accuracy), AVG(total_time) FROM workouts")
-        global_stats = cursor.fetchone()
-        global_avg_reps = round(global_stats[0] or 0, 2)
-        global_avg_acc = round(global_stats[1] or 0, 2)
-        global_avg_time = round(global_stats[2] or 0, 1)
+        # 🟢 2. สถิติเฉลี่ย Global (แยกตามท่า)
+        cursor.execute("""
+            SELECT exercise, AVG(reps), AVG(accuracy), AVG(total_time) 
+            FROM workouts GROUP BY exercise
+        """)
+        global_records = cursor.fetchall()
+        
+        global_reps = {"squat": 0, "pushup": 0, "plank": 0}
+        global_acc  = {"squat": 0, "pushup": 0, "plank": 0}
+        global_time = {"squat": 0, "pushup": 0, "plank": 0}
+        
+        for row in global_records:
+            ex = row[0]
+            if ex in global_reps:
+                global_reps[ex] = round(row[1] or 0, 2)
+                global_acc[ex]  = round(row[2] or 0, 2)
+                global_time[ex] = round(row[3] or 0, 1)
 
-        # หาจุดอ่อน (Weaknesses)
+        # 🟢 3. หาจุดอ่อน (Weaknesses) เหมือนเดิม
         cursor.execute("""
             SELECT bad_details FROM workouts WHERE user_id = %s AND bad > 0
         """, (user_id,))
@@ -100,12 +134,8 @@ def get_dashboard(user_id: int = Depends(get_current_user_id)):
         weakness_counts = {}
         for record in bad_records:
             details_raw = record[0] 
-            
-            # 🟢 เช็คความปลอดภัยก่อนแปลงข้อมูล
             if details_raw:
-                # แปลงจาก string เป็น dict (ถ้ายังไม่เป็น)
                 details = json.loads(details_raw) if isinstance(details_raw, str) else details_raw
-                # ลูปนับคะแนนจุดอ่อน
                 for key, val in details.items():
                     weakness_counts[key] = weakness_counts.get(key, 0) + val
                 
@@ -115,24 +145,34 @@ def get_dashboard(user_id: int = Depends(get_current_user_id)):
         cursor.close()
         conn.close()
 
+# 🟢 คำนวณค่าเฉลี่ย Global รวมทั้งหมด เพื่อเอาไปเปรียบเทียบ (Comparison)
+    g_total_reps = sum(global_reps.values())
+    g_total_time = sum(global_time.values())
+    active_accs = [v for v in global_acc.values() if v > 0]
+    g_avg_acc = sum(active_accs) / len(active_accs) if active_accs else 0
+
+    # 🟢 ส่งข้อมูลกลับไปให้ครบถ้วน ห้ามลืม comparison!
     return {
         "my_stats": {
-            "total_reps": user_reps,
-            "average_accuracy": user_acc,
-            "total_time": user_time,
+            "total_reps": total_reps_all,
+            "average_accuracy": overall_acc,
+            "total_time": total_time_all,
+            "reps_by_ex": my_reps,      
+            "acc_by_ex": my_acc,        
+            "time_by_ex": my_time,      
             "weaknesses": top_weakness
         },
         "global_stats": {
-            "average_reps": global_avg_reps,
-            "average_accuracy": global_avg_acc,
-            "average_time": global_avg_time
+            "reps_by_ex": global_reps,
+            "acc_by_ex": global_acc,
+            "time_by_ex": global_time
         },
         "comparison": {
-            "is_above_average_reps": user_reps > global_avg_reps,
-            "is_above_average_acc": user_acc > global_avg_acc
+            "is_above_average_reps": total_reps_all > g_total_reps,
+            "is_above_average_acc": overall_acc > g_avg_acc,
+            "is_above_average_time": total_time_all > g_total_time
         }
     }
-
 # ── 4. WebSockets: AI Trainers ────────────────────────────────────────────
 
 @router.websocket("/pushup")

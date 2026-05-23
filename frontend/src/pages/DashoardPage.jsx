@@ -13,6 +13,9 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // 🟢 ดึงชื่อผู้ใช้จาก LocalStorage
+  const username = localStorage.getItem("username") || "GUEST";
+
   useEffect(() => {
     const fetchDashboard = async () => {
       const token = localStorage.getItem("token");
@@ -41,7 +44,6 @@ export default function DashboardPage() {
     fetchDashboard();
   }, []);
 
-  // ── ฟังก์ชันช่วยจัดรูปแบบข้อความ (เช่น pushup_bad_back -> Pushup Bad Back) ──
   const formatLabel = (rawLabel) => {
     return rawLabel.replace(/_/g, ' ').toUpperCase();
   };
@@ -65,23 +67,34 @@ export default function DashboardPage() {
   }
 
   // ── เตรียมข้อมูลสำหรับ Recharts ──
+  // 🟢 แก้ไข: เพิ่ม comparison เข้าไปในการดึงข้อมูลด้วย
   const { my_stats, global_stats, comparison } = data;
   
   const chartData = [
     {
-      name: 'TOTAL REPS',
-      You: my_stats.total_reps,
-      GlobalAvg: global_stats.average_reps,
+      name: 'SQUAT (Reps)',
+      You: my_stats.reps_by_ex.squat,
+      GlobalAvg: global_stats.reps_by_ex.squat,
     },
     {
-      name: 'ACCURACY %',
-      You: my_stats.average_accuracy,
-      GlobalAvg: global_stats.average_accuracy,
+      name: 'PUSH UP (Reps)',
+      You: my_stats.reps_by_ex.pushup,
+      GlobalAvg: global_stats.reps_by_ex.pushup,
+    },
+    {
+      name: 'SQUAT ACC %',
+      You: my_stats.acc_by_ex.squat,
+      GlobalAvg: global_stats.acc_by_ex.squat,
+    },
+    {
+      name: 'PUSH UP ACC %',
+      You: my_stats.acc_by_ex.pushup,
+      GlobalAvg: global_stats.acc_by_ex.pushup,
     },
     {
       name: 'PLANK (Sec)',
-      You: my_stats.total_time,
-      GlobalAvg: global_stats.average_time,
+      You: my_stats.time_by_ex.plank,
+      GlobalAvg: global_stats.time_by_ex.plank,
     }
   ];
 
@@ -95,28 +108,49 @@ export default function DashboardPage() {
         >
           <IoMdArrowRoundBack size={18} /> BACK TO HOME
         </button>
-        <h1 className="text-2xl tracking-[0.3em] font-black text-transparent bg-clip-text bg-gradient-to-r from-[#00ff88] to-[#00b8ff]">
+        <h1 className="text-xl md:text-2xl tracking-[0.3em] font-black text-transparent bg-clip-text bg-gradient-to-r from-[#00ff88] to-[#00b8ff] hidden md:block">
           PERFORMANCE DASHBOARD
         </h1>
+
+        {/* 🟢 เพิ่ม Profile Badge แสดงชื่อผู้ใช้งาน */}
+        <div className="flex items-center gap-3">
+          <span className="text-[10px] tracking-widest text-white/50 uppercase">
+            {username.split('@')[0]}
+          </span>
+          <div className="w-8 h-8 rounded-full bg-white/5 border border-white/20 flex items-center justify-center text-white font-black text-xs uppercase shadow-[0_0_10px_rgba(255,255,255,0.1)]">
+            {username.substring(0, 1)}
+          </div>
+        </div>
       </header>
 
       <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* ── Section 1: Summary Cards ── */}
-        <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
+          {/* กล่องที่ 1: TOTAL REPS */}
           <div className="bg-white/5 border border-white/10 rounded-2xl p-6 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-[#00ff88]/10 blur-[50px] rounded-full" />
             <p className="text-xs tracking-[0.3em] text-white/40 mb-2">MY TOTAL REPS</p>
+            
             <div className="text-6xl font-black text-[#00ff88]">
               {my_stats.total_reps} <span className="text-lg text-white/30 font-normal">reps</span>
             </div>
-            <p className="text-xs text-white/50 mt-4">
-              {comparison.is_above_average_reps ? "🔥 สูงกว่าค่าเฉลี่ยเซิร์ฟเวอร์!" : "💪 สู้ต่อไป! ยังต่ำกว่าค่าเฉลี่ย"}
-            </p>
+            
+            <div className="flex gap-4 mt-4 border-t border-white/10 pt-4">
+              <div className="text-xs tracking-widest text-white/70">
+                <span className="text-[#00ff88] font-bold mr-1">SQUAT</span> 
+                {my_stats.reps_by_ex.squat}
+              </div>
+              <div className="w-px h-4 bg-white/20"></div>
+              <div className="text-xs tracking-widest text-white/70">
+                <span className="text-[#ff6b35] font-bold mr-1">PUSH UP</span> 
+                {my_stats.reps_by_ex.pushup}
+              </div>
+            </div>
           </div>
 
-          {/* 🟢 กล่องที่ 2 (ใหม่!): PLANK TIME */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 relative overflow-hidden">
+          {/* กล่องที่ 2: PLANK TIME */}
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 relative overflow-hidden flex flex-col justify-between">
             <div className="absolute top-0 right-0 w-32 h-32 bg-[#a855f7]/10 blur-[50px] rounded-full" />
             <p className="text-xs tracking-[0.3em] text-white/40 mb-2">TOTAL PLANK TIME</p>
             <div className="text-6xl font-black text-[#a855f7]">
@@ -127,12 +161,28 @@ export default function DashboardPage() {
             </p>
           </div>
           
+          {/* กล่องที่ 3: AVG ACCURACY */}
+{/* กล่องที่ 3: MY AVG ACCURACY (แก้ใหม่ให้แยกรายท่า) */}
           <div className="bg-white/5 border border-white/10 rounded-2xl p-6 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-[#00b8ff]/10 blur-[50px] rounded-full" />
             <p className="text-xs tracking-[0.3em] text-white/40 mb-2">MY AVG ACCURACY</p>
+            
             <div className="text-6xl font-black text-[#00b8ff]">
               {my_stats.average_accuracy}% 
             </div>
+            
+            {/* 🟢 เพิ่มรายละเอียดแยกท่าตรงนี้ */}
+            <div className="grid grid-cols-2 gap-4 mt-4 border-t border-white/10 pt-4">
+              <div>
+                <p className="text-[9px] tracking-widest text-white/40 mb-1">SQUAT</p>
+                <p className="text-sm font-bold text-[#00ff88]">{my_stats.acc_by_ex.squat}%</p>
+              </div>
+              <div>
+                <p className="text-[9px] tracking-widest text-white/40 mb-1">PUSH UP</p>
+                <p className="text-sm font-bold text-[#ff6b35]">{my_stats.acc_by_ex.pushup}%</p>
+              </div>
+            </div>
+            
             <p className="text-xs text-white/50 mt-4">
               {comparison.is_above_average_acc ? "🎯 ฟอร์มเป๊ะมาก! สูงกว่าคนทั่วไป" : "⚠️ เน้นจัดท่าให้ถูกต้องมากกว่าจำนวนครั้งนะ"}
             </p>
@@ -160,7 +210,6 @@ export default function DashboardPage() {
         </div>
 
         {/* ── Section 3: Weakness Analysis (Drill-down) ── */}
-{/* ── Section 3: Weakness Analysis (Drill-down) ── */}
         <div className="bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col">
           <h2 className="text-sm tracking-[0.2em] text-[#ff3b30] font-bold mb-2">WEAKNESS ANALYSIS</h2>
           <p className="text-xs text-white/40 mb-6">จุดอ่อนที่คุณทำผิดพลาดบ่อยที่สุด (แยกตามท่า)</p>
@@ -168,16 +217,12 @@ export default function DashboardPage() {
           <div className="flex-1 overflow-y-auto pr-2 space-y-6">
             {my_stats.weaknesses && my_stats.weaknesses.length > 0 ? (
               
-              // 🟢 นำชื่อท่าทั้ง 3 มาวนลูปสร้างหมวดหมู่
               ['squat', 'pushup', 'plank'].map((exerciseName) => {
                 
-                // 1. กรองเอาเฉพาะข้อมูลที่มีชื่อท่านี้อยู่ข้างหน้า (เช่น หาคำว่า "squat_")
                 const filteredWeaknesses = my_stats.weaknesses.filter(([label]) => label.startsWith(exerciseName));
 
-                // ถ้าในหมวดนี้ไม่มีคนทำผิดเลย ให้ข้ามไป ไม่ต้องสร้างกล่องให้รก
                 if (filteredWeaknesses.length === 0) return null;
 
-                // 2. ดึงสีประจำท่าให้ตรงกับธีมในแอป
                 const exColors = { squat: "#00ff88", pushup: "#ff6b35", plank: "#a855f7" };
                 const exColor = exColors[exerciseName];
                 const displayName = exerciseName === 'pushup' ? 'PUSH UP' : exerciseName.toUpperCase();
@@ -185,7 +230,6 @@ export default function DashboardPage() {
                 return (
                   <div key={exerciseName} className="mb-2 bg-black/20 p-4 rounded-xl border border-white/5">
                     
-                    {/* หัวข้อหมวดหมู่ (แยกสีตามท่า) */}
                     <div className="flex items-center gap-2 mb-4 pb-2 border-b border-white/10">
                       <div className="w-2 h-2 rounded-full" style={{ backgroundColor: exColor }} />
                       <div className="text-[10px] tracking-[0.3em] font-black" style={{ color: exColor }}>
@@ -193,13 +237,10 @@ export default function DashboardPage() {
                       </div>
                     </div>
 
-                    {/* แสดงหลอดจุดอ่อนของท่านี้ */}
                     {filteredWeaknesses.map(([postureLabel, count], index) => {
-                      // คำนวณความยาวหลอด (อิงจากจุดอ่อนที่ทำผิดเยอะสุดในหมวดหมู่นี้)
                       const maxCount = filteredWeaknesses[0][1];
                       const widthPercent = (count / maxCount) * 100;
                       
-                      // ตัดคำหน้าออก เช่น "SQUAT BAD HEEL" ให้เหลือแค่ "BAD HEEL" จะได้อ่านง่าย
                       const cleanLabel = formatLabel(postureLabel).replace(exerciseName.toUpperCase(), '').trim();
 
                       return (
@@ -213,7 +254,6 @@ export default function DashboardPage() {
                               className="h-full rounded-full transition-all duration-500"
                               style={{ 
                                 width: `${widthPercent}%`,
-                                // 🟢 เปลี่ยนสีหลอดให้เชื่อมโยงกับสีประจำท่า
                                 background: `linear-gradient(90deg, ${exColor}40, ${exColor})` 
                               }}
                             />
@@ -225,7 +265,6 @@ export default function DashboardPage() {
                 );
               })
             ) : (
-              // กรณีที่ฟอร์มเป๊ะ 100% ไม่มีทำผิดเลย
               <div className="h-full flex flex-col items-center justify-center text-white/20">
                 <div className="text-4xl mb-2">🏆</div>
                 <p className="text-xs tracking-widest text-center">เยี่ยมมาก!<br/>ไม่พบประวัติการทำผิดฟอร์ม</p>

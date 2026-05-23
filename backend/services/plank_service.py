@@ -35,7 +35,6 @@ NAME_TO_MP_IDX = {name: idx for name, idx in zip(LANDMARK_NAMES, REQUIRED_LANDMA
 
 # ── Config สำหรับ Web ────────────────────────────────────────────────────────
 SMOOTH_N = 7
-GOOD_THRESHOLD = 0.65
 CLASS_CONFIG = {
     "plank_good":     {"feedback": ""},
     "plank_bad_hips": {"feedback": "สะโพกงอ / ยกสูงเกิน!"},
@@ -200,7 +199,7 @@ def build_feature_vector(feat_dict: dict, feature_cols: list) -> np.ndarray:
         vec.append(float(val))
     return np.array(vec, dtype=np.float32).reshape(1, -1)
 
-# ── Timer System (เปลี่ยนจากนับรอบเป็นจับเวลาสะสม) ─────────────────────────
+# ── Timer System (แก้ไขให้เก็บบันทึกจุดอ่อน Dynamic อย่างฉลาด) ─────────────────────────
 class HoldTimer:
     def __init__(self):
         self.reset()
@@ -210,7 +209,7 @@ class HoldTimer:
         self.last_update_time = None
         self.is_holding = False
         self.bad_count = 0
-        self.bad_details = {}
+        self.bad_details = {} # 🟢 เปลี่ยนเป็นวงเล็บปีกกาเปล่าๆ เพื่อเก็บชื่อออโต้
         self._last_label = None
 
     def update(self, label: str, confidence: float) -> tuple[bool, str]:
@@ -218,7 +217,7 @@ class HoldTimer:
         is_new_bad = False
         
         # ถ้ารูปแบบถูกต้อง ให้เวลาเดินต่อไป
-        if label == "plank_good" :
+        if label == "plank_good":
             self.is_holding = True
             if self.last_update_time is not None:
                 self.total_accumulated += (now - self.last_update_time)
@@ -228,13 +227,11 @@ class HoldTimer:
             self.is_holding = False
             self.last_update_time = None
             
-# 🟢 ลอจิกใหม่สุดฉลาด: ขอแค่มีคำว่า _bad_ อยู่ในชื่อ และต้องไม่ซ้ำกับท่าเดิมที่ค้างอยู่
+            # 🟢 ลอจิกใหม่: เก็บข้อมูลออโต้ ขอแค่มีคำว่า _bad_ ไม่ต้อง Hardcode
             if "_bad_" in label and label != self._last_label:
-                # ถ้าไม่เคยมีท่านี้ในระบบ ให้สร้างกุญแจ (Key) ใหม่ขึ้นมาเป็น 0 ก่อน
                 if label not in self.bad_details:
                     self.bad_details[label] = 0
                 
-                # บวกคะแนนความผิด
                 self.bad_details[label] += 1
                 self.bad_count += 1
                 is_new_bad = True
@@ -244,10 +241,10 @@ class HoldTimer:
 
     def to_dict(self) -> dict:
         return {
-            "total_time": round(self.total_accumulated, 1), # ส่งกลับไปแสดงที่ React
+            "total_time": round(self.total_accumulated, 1), 
             "is_holding": self.is_holding,
             "bad_count": self.bad_count,
-            "bad_details": self.bad_details
+            "bad_details": self.bad_details # 🟢 โยนออกไปเลย ไม่ต้องลูปกรองแล้ว
         }
 
 # 🟢 ด่านตรวจว่ายืนเต็มกล้องแล้วหรือยัง
@@ -256,13 +253,11 @@ def is_body_fully_visible(landmarks, exercise):
     threshold = 0.5 # ความมั่นใจของกล้องต้องเกิน 50%
     
     if exercise == "squat":
-        # Squat: ต้องเห็น ไหล่(11,12), สะโพก(23,24), เข่า(25,26), ข้อเท้า(27,28) ชัดเจน
         left_ready = lm[11].visibility > threshold and lm[23].visibility > threshold and lm[25].visibility > threshold and lm[27].visibility > threshold
         right_ready = lm[12].visibility > threshold and lm[24].visibility > threshold and lm[26].visibility > threshold and lm[28].visibility > threshold
         return left_ready or right_ready
         
     elif exercise in ["pushup", "plank"]:
-        # Pushup/Plank: ต้องเห็น ไหล่, ศอก(13,14), ข้อมือ(15,16), สะโพก, ข้อเท้า
         left_ready = lm[11].visibility > threshold and lm[13].visibility > threshold and lm[15].visibility > threshold and lm[23].visibility > threshold and lm[27].visibility > threshold
         right_ready = lm[12].visibility > threshold and lm[14].visibility > threshold and lm[16].visibility > threshold and lm[24].visibility > threshold and lm[28].visibility > threshold
         return left_ready or right_ready
@@ -309,16 +304,17 @@ class PlankPredictor:
                 "landmarks": None,
                 **self.timer.to_dict(),
             }
-# 🟢 2. ด่านตรวจใหม่: ถ้าเห็นคนแต่ "เห็นไม่เต็มตัว" ให้หยุดแค่นี้ ห้ามนับ!
-        # (อย่าลืมเปลี่ยนคำว่า "squat" เป็น "pushup" หรือ "plank" ตามไฟล์ที่คุณแก้อยู่ด้วยนะครับ)
+
+        # ด่านตรวจที่ 2: เห็นไม่เต็มตัว ให้หยุด
         if not is_body_fully_visible(results.pose_landmarks, "plank"):
             return {
-                "pose_detected": False,  # บังคับหน้าเว็บให้โชว์ว่า "ไม่พบท่าทาง — ยืนหน้ากล้อง"
+                "pose_detected": False,  
                 "label": "no_pose",
                 "feedback": "",
-                "landmarks": self.landmarks_to_list(results.pose_landmarks), # ส่งก้างปลาไปให้ดูระยะ
+                "landmarks": self.landmarks_to_list(results.pose_landmarks), 
                 **self.timer.to_dict(),
             }
+            
         feat_dict = landmarks_to_feature_dict(results.pose_landmarks)
         if feat_dict is not None:
             vec = build_feature_vector(feat_dict, feature_columns)
@@ -333,7 +329,19 @@ class PlankPredictor:
             label = le.inverse_transform([smooth_idx])[0]
             confidence = float(proba[0][smooth_idx])
 
-            # 🟢 อัปเดตเวลา และเช็คว่าทำผิดฟอร์มรึเปล่า
+            # 🚨 ด่านตรวจจับคนโกง: เช็คคนแอบนอนราบพื้น (Lying Flat Detector)
+            lm = results.pose_landmarks.landmark
+            side, hip_i, knee_i, ankle_i, shoulder_i = _get_main_side(lm)
+            
+            shoulder_y = lm[shoulder_i].y
+            elbow_y = lm[NAME_TO_MP_IDX[f"{side}_elbow"]].y
+            
+            # ถ้าข้อศอกกับหัวไหล่อยู่ในระดับแกน Y ใกล้เคียงกันมาก (ห่างกันไม่ถึง 5%) แสดงว่าตัวติดพื้นแน่นอน
+            if (elbow_y - shoulder_y) < 0.05:
+                label = "plank_bad_hips"  # บังคับตีเป็นท่าสะโพกตก
+                confidence = 0.99
+
+            # อัปเดตเวลา และเช็คว่าทำผิดฟอร์มรึเปล่า
             is_new_bad, rep_label = self.timer.update(label, confidence)
             
             feedback = ""
