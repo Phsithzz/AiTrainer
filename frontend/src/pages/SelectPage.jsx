@@ -46,7 +46,7 @@ export default function SelectPage() {
   const token = localStorage.getItem("token");
 
   const [showLogoutModal, setShowLogoutModal] = useState(false); // เพิ่ม
-
+const username = localStorage.getItem("username") || "GUEST";
   // 🟢 ฟังก์ชันดักจับการคลิก
   const handleLogout = async () => {
       setShowLogoutModal(false);
@@ -190,6 +190,16 @@ export default function SelectPage() {
               LOGIN
             </button>
           )}
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="hidden md:inline-block text-[10px] tracking-widest text-white/50 uppercase">
+            {username.split('@')[0]} {/* ถ้าเป็นอีเมล จะตัดเอาแค่ชื่อหน้า @ มาโชว์ */}
+          </span>
+          <div className="w-8 h-8 rounded-full cursor-pointer
+          hover:border-white/30 px-4 py-2  shadow-[2px_2px_0px_white]
+          bg-white/5 border border-white flex items-center justify-center text-white  text-xs uppercase">
+            {username.substring(0, 1)} {/* เอาตัวอักษรตัวแรกมาทำเป็นโลโก้ */}
+          </div>
         </div>
       </header>
 

@@ -160,33 +160,72 @@ export default function DashboardPage() {
         </div>
 
         {/* ── Section 3: Weakness Analysis (Drill-down) ── */}
+{/* ── Section 3: Weakness Analysis (Drill-down) ── */}
         <div className="bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col">
           <h2 className="text-sm tracking-[0.2em] text-[#ff3b30] font-bold mb-2">WEAKNESS ANALYSIS</h2>
-          <p className="text-xs text-white/40 mb-6">จุดอ่อนที่คุณทำผิดพลาดบ่อยที่สุด</p>
+          <p className="text-xs text-white/40 mb-6">จุดอ่อนที่คุณทำผิดพลาดบ่อยที่สุด (แยกตามท่า)</p>
           
-          <div className="flex-1 overflow-y-auto pr-2 space-y-4">
+          <div className="flex-1 overflow-y-auto pr-2 space-y-6">
             {my_stats.weaknesses && my_stats.weaknesses.length > 0 ? (
-              my_stats.weaknesses.map(([postureLabel, count], index) => {
-                // คำนวณความยาวของหลอด (เทียบกับท่าที่ผิดเยอะสุดซึ่งอยู่ index 0)
-                const maxCount = my_stats.weaknesses[0][1];
-                const widthPercent = (count / maxCount) * 100;
+              
+              // 🟢 นำชื่อท่าทั้ง 3 มาวนลูปสร้างหมวดหมู่
+              ['squat', 'pushup', 'plank'].map((exerciseName) => {
+                
+                // 1. กรองเอาเฉพาะข้อมูลที่มีชื่อท่านี้อยู่ข้างหน้า (เช่น หาคำว่า "squat_")
+                const filteredWeaknesses = my_stats.weaknesses.filter(([label]) => label.startsWith(exerciseName));
+
+                // ถ้าในหมวดนี้ไม่มีคนทำผิดเลย ให้ข้ามไป ไม่ต้องสร้างกล่องให้รก
+                if (filteredWeaknesses.length === 0) return null;
+
+                // 2. ดึงสีประจำท่าให้ตรงกับธีมในแอป
+                const exColors = { squat: "#00ff88", pushup: "#ff6b35", plank: "#a855f7" };
+                const exColor = exColors[exerciseName];
+                const displayName = exerciseName === 'pushup' ? 'PUSH UP' : exerciseName.toUpperCase();
 
                 return (
-                  <div key={postureLabel} className="mb-4">
-                    <div className="flex justify-between items-end mb-1">
-                      <span className="text-xs font-bold tracking-wider">{formatLabel(postureLabel)}</span>
-                      <span className="text-xs text-[#ff3b30] font-black">{count} ครั้ง</span>
+                  <div key={exerciseName} className="mb-2 bg-black/20 p-4 rounded-xl border border-white/5">
+                    
+                    {/* หัวข้อหมวดหมู่ (แยกสีตามท่า) */}
+                    <div className="flex items-center gap-2 mb-4 pb-2 border-b border-white/10">
+                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: exColor }} />
+                      <div className="text-[10px] tracking-[0.3em] font-black" style={{ color: exColor }}>
+                        {displayName}
+                      </div>
                     </div>
-                    <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-gradient-to-r from-[#ff9500] to-[#ff3b30] rounded-full"
-                        style={{ width: `${widthPercent}%` }}
-                      />
-                    </div>
+
+                    {/* แสดงหลอดจุดอ่อนของท่านี้ */}
+                    {filteredWeaknesses.map(([postureLabel, count], index) => {
+                      // คำนวณความยาวหลอด (อิงจากจุดอ่อนที่ทำผิดเยอะสุดในหมวดหมู่นี้)
+                      const maxCount = filteredWeaknesses[0][1];
+                      const widthPercent = (count / maxCount) * 100;
+                      
+                      // ตัดคำหน้าออก เช่น "SQUAT BAD HEEL" ให้เหลือแค่ "BAD HEEL" จะได้อ่านง่าย
+                      const cleanLabel = formatLabel(postureLabel).replace(exerciseName.toUpperCase(), '').trim();
+
+                      return (
+                        <div key={postureLabel} className="mb-3 last:mb-0">
+                          <div className="flex justify-between items-end mb-1">
+                            <span className="text-xs font-bold tracking-wider text-white/80">{cleanLabel}</span>
+                            <span className="text-xs text-[#ff3b30] font-black">{count} ครั้ง</span>
+                          </div>
+                          <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full rounded-full transition-all duration-500"
+                              style={{ 
+                                width: `${widthPercent}%`,
+                                // 🟢 เปลี่ยนสีหลอดให้เชื่อมโยงกับสีประจำท่า
+                                background: `linear-gradient(90deg, ${exColor}40, ${exColor})` 
+                              }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 );
               })
             ) : (
+              // กรณีที่ฟอร์มเป๊ะ 100% ไม่มีทำผิดเลย
               <div className="h-full flex flex-col items-center justify-center text-white/20">
                 <div className="text-4xl mb-2">🏆</div>
                 <p className="text-xs tracking-widest text-center">เยี่ยมมาก!<br/>ไม่พบประวัติการทำผิดฟอร์ม</p>

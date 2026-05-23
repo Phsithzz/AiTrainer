@@ -16,6 +16,7 @@ export function useAuth() {
             
             // 🟢 เก็บ Token ลงเครื่อง (Axios ดึงข้อมูลจาก res.data)
             localStorage.setItem("token", res.data.access_token);
+            localStorage.setItem("username", res.data.username || identifier);
             return true; 
         } catch (err) {
             // ดึงข้อความ Error จาก FastAPI (ถ้ามี detail ส่งมา)
@@ -55,6 +56,8 @@ export function useAuth() {
             }
         }
         localStorage.removeItem("token");
+
+        localStorage.removeItem("username");
     };
 
     const getToken = () => localStorage.getItem("token");
