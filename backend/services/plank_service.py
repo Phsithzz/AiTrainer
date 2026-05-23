@@ -222,7 +222,7 @@ class HoldTimer:
         is_new_bad = False
         
         # ถ้ารูปแบบถูกต้อง ให้เวลาเดินต่อไป
-        if label == "plank_good" and confidence >= GOOD_THRESHOLD:
+        if label == "plank_good" :
             self.is_holding = True
             if self.last_update_time is not None:
                 self.total_accumulated += (now - self.last_update_time)
