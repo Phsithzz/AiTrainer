@@ -522,8 +522,8 @@ const handleStart = () => {
                 
                 <div className="flex gap-4">
                   {/* กล่อง GOOD (เน้นสีเขียว) */}
-                  <div className="flex-1 rounded-2xl bg-gradient-to-b from-[#00ff88]/10 to-transparent border border-[#00ff88]/20 py-6 shadow-[0_0_20px_rgba(0,255,136,0.05)]">
-                    <div className="text-[10px] font-black tracking-[0.2em] text-[#00ff88]/60 mb-2">
+                  <div className="flex-1 rounded-2xl bg-gradient-to-b from-[#00ff88]/10 to-transparent border-2 border-white py-20 shadow-[0_0_20px_rgba(0,255,136,0.05)]">
+                    <div className=" font-black tracking-[0.2em] text-[#00ff88]/60 mb-2">
                       GOOD
                     </div>
                     <div className="text-5xl font-black text-[#00ff88]">
@@ -532,8 +532,8 @@ const handleStart = () => {
                   </div>
                   
                   {/* กล่อง BAD (เน้นสีส้ม) */}
-                  <div className="flex-1 rounded-2xl bg-gradient-to-b from-[#ff9500]/10 to-transparent border border-[#ff9500]/20 py-6 shadow-[0_0_20px_rgba(255,149,0,0.05)]">
-                    <div className="text-[10px] font-black tracking-[0.2em] text-[#ff9500]/60 mb-2">
+                  <div className="flex-1 rounded-2xl bg-gradient-to-b from-[#ff9500]/10 to-transparent border-2 border-white py-20 shadow-[0_0_20px_rgba(255,149,0,0.05)]">
+                    <div className=" font-black tracking-[0.2em] text-[#ff9500]/60 mb-2">
                       BAD
                     </div>
                     <div className="text-5xl font-black text-[#ff9500]">
