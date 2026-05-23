@@ -76,18 +76,20 @@ def get_dashboard(user_id: int = Depends(get_current_user_id)):
     try:
         # สถิติรวมของ User
         cursor.execute("""
-            SELECT SUM(reps), AVG(accuracy) 
+            SELECT SUM(reps), AVG(accuracy), SUM(total_time) 
             FROM workouts WHERE user_id = %s
         """, (user_id,))
         user_stats = cursor.fetchone()
         user_reps = user_stats[0] or 0
         user_acc = round(user_stats[1] or 0, 2)
+        user_time = round(user_stats[2] or 0, 1)
 
         # สถิติเฉลี่ยของ Global
-        cursor.execute("SELECT AVG(reps), AVG(accuracy) FROM workouts")
+        cursor.execute("SELECT AVG(reps), AVG(accuracy), AVG(total_time) FROM workouts")
         global_stats = cursor.fetchone()
         global_avg_reps = round(global_stats[0] or 0, 2)
         global_avg_acc = round(global_stats[1] or 0, 2)
+        global_avg_time = round(global_stats[2] or 0, 1)
 
         # หาจุดอ่อน (Weaknesses)
         cursor.execute("""
@@ -117,11 +119,13 @@ def get_dashboard(user_id: int = Depends(get_current_user_id)):
         "my_stats": {
             "total_reps": user_reps,
             "average_accuracy": user_acc,
+            "total_time": user_time,
             "weaknesses": top_weakness
         },
         "global_stats": {
             "average_reps": global_avg_reps,
-            "average_accuracy": global_avg_acc
+            "average_accuracy": global_avg_acc,
+            "average_time": global_avg_time
         },
         "comparison": {
             "is_above_average_reps": user_reps > global_avg_reps,
