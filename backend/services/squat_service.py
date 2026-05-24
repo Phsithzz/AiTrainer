@@ -201,32 +201,31 @@ class SquatPredictor:
         lms = results.pose_landmarks.landmark
         
         # 1. ปิดตา AI ไม่ให้จับผิดตอนกำลังยืนพัก (UP)
-        if self.counter.state == "UP":
-            label = "squat_good"
-        else:
-            # 2. จับผิดเฉพาะตอนย่อตัว
-            LEFT_HEEL, RIGHT_HEEL = 29, 30
-            LEFT_FOOT_INDEX, RIGHT_FOOT_INDEX = 31, 32
-            
-            heel_y = (lms[LEFT_HEEL].y + lms[RIGHT_HEEL].y) / 2
-            foot_y = (lms[LEFT_FOOT_INDEX].y + lms[RIGHT_FOOT_INDEX].y) / 2
-            
-            # กฎส้นเท้าลอย
-            if heel_y < foot_y - 0.04: 
-                label = "squat_bad_heel"
-                confidence = 0.99  
+# 🎯 HYBRID RULES (ดักจับความผิดปกติทับโมเดล AI ตลอดเวลา!)
+        lms = results.pose_landmarks.landmark
+        
+        LEFT_HEEL, RIGHT_HEEL = 29, 30
+        LEFT_FOOT_INDEX, RIGHT_FOOT_INDEX = 31, 32
+        
+        heel_y = (lms[LEFT_HEEL].y + lms[RIGHT_HEEL].y) / 2
+        foot_y = (lms[LEFT_FOOT_INDEX].y + lms[RIGHT_FOOT_INDEX].y) / 2
+        
+        # 🟢 กฎส้นเท้าลอย: เช็คตลอดเวลา ไม่ว่าจะยืนหรือย่อ
+        if heel_y < foot_y - 0.04: 
+            label = "squat_bad_heel"
+            confidence = 0.99  
 
-            # กฎหลังงอ
-            shoulder = [ (lms[11].x + lms[12].x)/2, (lms[11].y + lms[12].y)/2 ]
-            hip      = [ (lms[23].x + lms[24].x)/2, (lms[23].y + lms[24].y)/2 ]
-            knee     = [ (lms[25].x + lms[26].x)/2, (lms[25].y + lms[26].y)/2 ]
-            
-            back_angle = self._calculate_angle(shoulder, hip, knee)
-            if back_angle < 60.0: 
-                label = "squat_bad_back"
-                confidence = 0.99  
+        # 🟢 กฎหลังงอ: เช็คตลอดเวลา
+        shoulder = [ (lms[11].x + lms[12].x)/2, (lms[11].y + lms[12].y)/2 ]
+        hip      = [ (lms[23].x + lms[24].x)/2, (lms[23].y + lms[24].y)/2 ]
+        knee     = [ (lms[25].x + lms[26].x)/2, (lms[25].y + lms[26].y)/2 ]
+        
+        back_angle = self._calculate_angle(shoulder, hip, knee)
+        if back_angle < 60.0: 
+            label = "squat_bad_back"
+            confidence = 0.99  
 
-        # อัปเดตการนับ
+        # ── อัปเดตการนับ ──
         lm_list = self.landmarks_to_list(results.pose_landmarks)
         new_rep, rep_label = self.counter.update(lm_list, label, confidence)
 
