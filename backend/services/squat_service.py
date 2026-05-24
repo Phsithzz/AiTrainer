@@ -86,142 +86,78 @@ def is_body_fully_visible(landmarks):
 
 # ── Rep Counter (ใช้ลอจิกจำท่าผิดท่าเดียวแบบเก่า + เชื่อม Dashboard ใหม่) ─────────
 
+# ── Rep Counter (Squat: ลอจิกเก่า + เพิ่มความอดทน 4 เฟรม) ─────────
 class RepCounter:
-
     def __init__(self):
-
         self.reset()
 
-
-
     def reset(self):
-
         self.reps       = 0
-
         self.state      = "UP"
-
         self.good_count = 0
-
         self.bad_count  = 0
-
-       
-
-        # 🟢 ตัวแปรสำหรับจำความผิด (ลอจิกเก่าของคุณ)
-
+        
         self.is_bad_rep = False
-
         self.bad_label_memory = None
-
-       
-
-        # 🟢 ตัวแปรสำหรับส่งสถิติไป Dashboard (ระบบใหม่ต้องการสิ่งนี้)
-
-        self.bad_details = {}
-
-
+        self.bad_details = {} 
+        
+        # 🟢 เพิ่มตัวนับเฟรมความผิดปกติ
+        self.bad_frames_count = 0 
 
     def update(self, landmarks_list: list, label: str, confidence: float) -> tuple[bool, str]:
-
+        LEFT_HIP, RIGHT_HIP = 23, 24
+        LEFT_KNEE, RIGHT_KNEE = 25, 26
+        
         hip_y  = (landmarks_list[LEFT_HIP]["y"]  + landmarks_list[RIGHT_HIP]["y"])  / 2
-
         knee_y = (landmarks_list[LEFT_KNEE]["y"] + landmarks_list[RIGHT_KNEE]["y"]) / 2
-
-       
-
-        # ถ้าระดับสะโพกต่ำกว่า 88% ของระดับเข่า ถือว่ากำลังย่อ (DOWN)
-
+        
         is_down = hip_y > knee_y * 0.88
-
         new_rep = False
-
         rep_label = "squat_good"
 
-
-
         if self.state == "UP" and is_down:
-
-            # 1. จังหวะเริ่มลง (เปลี่ยนจากยืนเป็นนั่ง)
-
             self.state = "DOWN"
-
-            # รีเซ็ตความจำใหม่ทุกครั้งที่เริ่มย่อ
-
             self.is_bad_rep = False
-
             self.bad_label_memory = None
-
-
+            self.bad_frames_count = 0 # 🟢 รีเซ็ตตอนเริ่มย่อ
 
         if self.state == "DOWN":
-
-            # 2. จังหวะกำลังย่อตัว
-
-            # ถ้าเจอท่าที่ผิดระหว่างนี้ ให้ "จำ" ไว้เลยว่า Rep นี้เสียแล้ว (ลอจิกเก่า)
-
-            if label != "squat_good" and confidence >= GOOD_THRESHOLD:
-
-                self.is_bad_rep = True
-
-                self.bad_label_memory = label
-
-
-
-            # 3. จังหวะยืนขึ้นสุด (เปลี่ยนจากนั่งเป็นยืน = จบ Rep)
+            # 🟢 ลอจิกความอดทน: ต้องเห็นว่าผิดติดต่อกัน 4 เฟรม
+            if label != "squat_good" and confidence >= 0.65: # ใช้ค่า GOOD_THRESHOLD
+                self.bad_frames_count += 1
+                if self.bad_frames_count >= 4: 
+                    self.is_bad_rep = True
+                    if self.bad_label_memory is None:
+                        self.bad_label_memory = label 
+            else:
+                # ถ้ากล้องแกว่ง แล้วกลับมาทำท่าถูก ให้ล้างตัวนับทิ้ง
+                self.bad_frames_count = 0
 
             if not is_down:
-
                 self.state = "UP"
-
                 self.reps += 1
-
                 new_rep = True
 
-
-
-                # ตัดสินผลลัพธ์ของ Rep นี้จากความจำ
-
                 if self.is_bad_rep:
-
                     self.bad_count += 1
-
                     rep_label = self.bad_label_memory
-
-                   
-
-                    # 🟢 เอาท่าผิดที่จำไว้ 1 ท่า โยนใส่ตะกร้าสถิติของ Dashboard
-
+                    
                     if rep_label not in self.bad_details:
-
                         self.bad_details[rep_label] = 0
-
                     self.bad_details[rep_label] += 1
-
                 else:
-
                     self.good_count += 1
-
                     rep_label = "squat_good"
-
-
 
         return new_rep, rep_label
 
-
-
     def to_dict(self) -> dict:
-
         return {
-
             "reps":       self.reps,
-
             "good_count": self.good_count,
-
             "bad_count":  self.bad_count,
-
-            "bad_details": self.bad_details, # ส่งก้อนสถิติไปวาดกราฟ Weakness
-
+            "bad_details": self.bad_details, 
             "state":      self.state,
-
         }
 
 

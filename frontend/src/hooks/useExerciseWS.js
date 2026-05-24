@@ -100,7 +100,7 @@ export function useExerciseWS(exercise, videoRef, overlayCanvasRef, active, isTr
   useEffect(() => { isTrackingRef.current = isTracking; }, [isTracking]); 
   
 const speakWarning = useCallback((label) => {
-    if (!label) return; // 🟢 ลบการดัก _bad_ ทิ้งไป ให้มันรับฟังทุกท่า
+    if (!label) return;
 
     const now = Date.now();
     
@@ -108,31 +108,35 @@ const speakWarning = useCallback((label) => {
     if (label.includes("_bad_")) {
       lastWasGood.current = false; // รีเซ็ตสถานะว่าตอนนี้ทำผิดอยู่
       
-      // หน่วงเวลา 4 วินาที ไม่ให้ด่ารัวเกินไป
-      if (now - lastAudioTime.current > 4000 && !window.speechSynthesis.speaking) {
-        window.speechSynthesis.cancel();
-        const textToSpeak = cfg.labelText[label] || "Bad form";
-        const utterance = new SpeechSynthesisUtterance(textToSpeak);
-        utterance.lang = "th-TH"; 
-        utterance.rate = 0.9;
-        window.speechSynthesis.speak(utterance);
-        lastAudioTime.current = now;
+      // หน่วงเวลา 4 วินาที ไม่ให้ด่ารัวเกินไป และ "ห้ามพูดแทรกถ้ากำลังพูดอยู่"
+      if (now - lastAudioTime.current > 4000) {
+        
+        // 🟢 [หัวใจสำคัญ] ถ้าบอทกำลังบ่น/ชมอะไรอยู่ ให้รอจนกว่าจะพูดจบ ห้าม cancel() เด็ดขาด!
+        if (!window.speechSynthesis.speaking) {
+          const textToSpeak = cfg.labelText[label] || "Bad form";
+          const utterance = new SpeechSynthesisUtterance(textToSpeak);
+          utterance.lang = "th-TH"; 
+          utterance.rate = 0.9;
+          window.speechSynthesis.speak(utterance);
+          lastAudioTime.current = now;
+        }
       }
     } 
     // 🟢 เคสที่ 2: ถ้าเป็นท่าถูก (_good) 
     else if (label.includes("_good")) {
       
       // จะให้พูดชม เฉพาะตอนที่ "เพิ่งเปลี่ยนจากท่าผิด มาทำท่าถูก" เท่านั้น 
-      // จะได้ไม่พูดชมซ้ำๆ รัวๆ ตอนทำท่าค้างไว้
       if (!lastWasGood.current) {
-        window.speechSynthesis.cancel(); // สั่งหยุดเสียงด่าก่อนหน้าทันที
         
-        const utterance = new SpeechSynthesisUtterance("ท่าทางถูกต้อง ทำดีมากครับ");
-        utterance.lang = "th-TH";
-        utterance.rate = 0.95;
-        window.speechSynthesis.speak(utterance);
-        
-        lastWasGood.current = true; // ล็อคว่าพูดชมไปแล้ว ห้ามชมซ้ำ
+        // 🟢 [หัวใจสำคัญ] เช็คก่อนว่าบอทปากว่างไหม ห้ามพูดแทรกเสียงด่า
+        if (!window.speechSynthesis.speaking) {
+          const utterance = new SpeechSynthesisUtterance("ท่าทางถูกต้อง ทำดีมากครับ");
+          utterance.lang = "th-TH";
+          utterance.rate = 0.95;
+          window.speechSynthesis.speak(utterance);
+          
+          lastWasGood.current = true; // ล็อคว่าพูดชมไปแล้ว ห้ามชมซ้ำ
+        }
       }
     }
   }, [cfg]);

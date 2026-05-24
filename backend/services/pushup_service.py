@@ -175,6 +175,7 @@ def build_feature_vector(feat_dict: dict, feature_cols: list) -> np.ndarray:
 
 # ── Rep Counter (ปรับปรุงให้เก็บ Dashboard Data) ─────────────────────────────
 # ── Rep Counter (ปรับปรุงให้เก็บ Dashboard Data และกันนับเบิ้ล) ───────────────
+# ── Rep Counter (Pushup: Basket Logic + ความอดทน 4 เฟรม) ───────────────
 class RepCounter:
     UP_THRESHOLD   = 145 
     DOWN_THRESHOLD = 120 
@@ -187,42 +188,56 @@ class RepCounter:
         self.state      = "UP" 
         self.good_count = 0
         self.bad_count  = 0
-        self.bad_details = {} # 🟢 ปล่อยว่างไว้ให้ Dynamic
-        self.current_rep_mistakes = set() # 🟢 ตะกร้าจดความผิดประจำรอบ
+        self.bad_details = {} 
+        self.current_rep_mistakes = set() 
+        
+        # 🟢 เพิ่มตัวนับและตัวจำชื่อความผิดล่าสุด
+        self.bad_frames_count = 0
+        self.last_bad_label = None
 
     def update(self, label: str, feat_dict: dict | None) -> bool:
         new_rep = False
 
-        # 🟢 1. ถ้า AI เห็นว่าผิดท่า ให้ "จด" ลงตะกร้าไว้ก่อน
+        # 🟢 ลอจิกความอดทน: ผิดชื่อเดิมซ้ำๆ 4 เฟรม ถึงจะจับโยนลงตะกร้า
         if "_bad_" in label:
-            self.current_rep_mistakes.add(label)
+            if label == self.last_bad_label:
+                self.bad_frames_count += 1
+            else:
+                self.last_bad_label = label
+                self.bad_frames_count = 1
+                
+            if self.bad_frames_count >= 4:
+                self.current_rep_mistakes.add(label)
+        else:
+            self.bad_frames_count = 0
+            self.last_bad_label = None
 
         if feat_dict is not None:
             elbow_avg = feat_dict.get("elbow_angle_avg", 180.0)
             
             if self.state == "UP" and elbow_avg < self.DOWN_THRESHOLD:
                 self.state = "DOWN"
+                # เคลียร์สถิติเผื่อเริ่มย่อใหม่
+                self.current_rep_mistakes.clear()
+                self.bad_frames_count = 0
                 
             elif self.state == "DOWN" and elbow_avg > self.UP_THRESHOLD:
                 self.state = "UP"
                 self.reps += 1
                 new_rep = True
                 
-                # 🟢 2. เช็คบิลตอนจบรอบ (ดันตัวขึ้นสุด)
                 if len(self.current_rep_mistakes) > 0:
-                    self.bad_count += 1 # นับว่ารอบนี้แย่ (แค่ 1 ครั้ง)
+                    self.bad_count += 1 
                     
-                    # แจกแจงว่ารอบนี้ทำอะไรผิดบ้างลงใน bad_details
                     for mistake in self.current_rep_mistakes:
                         if mistake not in self.bad_details:
                             self.bad_details[mistake] = 0
                         self.bad_details[mistake] += 1
                 else:
-                    # ถ้ารอบนี้ไม่มีข้อผิดพลาดในตะกร้าเลย แปลว่าเพอร์เฟกต์!
                     self.good_count += 1
 
-                # 🟢 3. เทตะกร้าทิ้ง เตรียมเริ่มนับรอบต่อไป
                 self.current_rep_mistakes.clear()
+                self.bad_frames_count = 0
 
         return new_rep
 
