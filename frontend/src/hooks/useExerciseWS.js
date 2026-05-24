@@ -109,7 +109,7 @@ const speakWarning = useCallback((label) => {
       lastWasGood.current = false; // รีเซ็ตสถานะว่าตอนนี้ทำผิดอยู่
       
       // หน่วงเวลา 4 วินาที ไม่ให้ด่ารัวเกินไป และ "ห้ามพูดแทรกถ้ากำลังพูดอยู่"
-      if (now - lastAudioTime.current > 4000) {
+      if (now - lastAudioTime.current > 3000) {
         
         // 🟢 [หัวใจสำคัญ] ถ้าบอทกำลังบ่น/ชมอะไรอยู่ ให้รอจนกว่าจะพูดจบ ห้าม cancel() เด็ดขาด!
         if (!window.speechSynthesis.speaking) {
