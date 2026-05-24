@@ -317,17 +317,29 @@ class SquatPredictor:
             label = le.inverse_transform([smooth_idx])[0]
             confidence = float(proba[0][smooth_idx])
 
+         # ... (โค้ดก่อนหน้านี้เหมือนเดิม) ...
             if label == "squat_bad_heel":
-                # ถ้ามั่นใจไม่ถึง 80% ว่าส้นเท้าลอย ถือว่าให้ผ่าน (กันมุมกล้องเพี้ยน)
+                # ถ้ามั่นใจไม่ถึง 70% ว่าส้นเท้าลอย ถือว่าให้ผ่าน (กันมุมกล้องเพี้ยน)
                 if confidence < 0.70: 
                     label = "squat_good"
-                    # ดึงค่าความมั่นใจของ squat_good กลับมาแทน (ถ้ามี)
                     good_idx = list(le.classes_).index("squat_good") if "squat_good" in le.classes_ else 0
                     confidence = float(proba[0][good_idx])
     
             new_rep, rep_label = self.counter.update(results.pose_landmarks, label)
             
-            # ถ้าจบรอบและเป็นท่าผิด ให้โชว์คำเตือนค้างไว้สักพัก (เดี๋ยวฝั่งหน้าเว็บ React จะเอาไปหน่วงเวลาเอง)
+            # -------------------------------------------------------------
+            # 🟢 [เพิ่มใหม่!] ล็อคเป้าประจานความผิด (ฉบับ Basket Logic)
+            # -------------------------------------------------------------
+            if new_rep:
+                # จังหวะยืนขึ้นสุด (จบรอบ): บังคับส่ง Label เป็นผลลัพธ์สรุปของรอบนั้นไปให้ React
+                label = rep_label
+            elif self.counter.state == "DOWN" and len(self.counter.current_rep_mistakes) > 0:
+                # จังหวะที่กำลังย่อ หรือ ดันตัวขึ้น: ถ้าในตะกร้ามีความผิดแล้วสัก 1 อย่าง
+                # ให้ดึงชื่อความผิดนั้นมาทับ Label เลย ก้างปลาจะได้เป็นสีแดง/ส้มค้างไว้!
+                label = list(self.counter.current_rep_mistakes)[0]
+                confidence = 0.99
+
+            # ดึงข้อความแจ้งเตือน (Feedback) ไปโชว์หน้าจอเฉพาะตอนจบรอบแล้วทำผิด
             feedback = ""
             if new_rep and rep_label and rep_label != "squat_good":
                 feedback = CLASS_CONFIG.get(rep_label, DEFAULT_CONFIG)["feedback"]
