@@ -41,6 +41,7 @@ def is_body_fully_visible(landmarks):
     return left_ready or right_ready
 
 # ── Rep Counter (อัปเกรดเป็น Basket Logic เชื่อม Dashboard ใหม่) ───────────────
+# ── Rep Counter (ใช้ลอจิกจำท่าผิดท่าเดียวแบบเก่า + เชื่อม Dashboard ใหม่) ─────────
 class RepCounter:
     def __init__(self):
         self.reset()
@@ -50,8 +51,13 @@ class RepCounter:
         self.state      = "UP"
         self.good_count = 0
         self.bad_count  = 0
-        self.bad_details = {} # 🟢 เพิ่มตะกร้าเก็บสถิติให้ Dashboard
-        self.current_rep_mistakes = set() 
+        
+        # 🟢 ตัวแปรสำหรับจำความผิด (ลอจิกเก่าของคุณ)
+        self.is_bad_rep = False
+        self.bad_label_memory = None
+        
+        # 🟢 ตัวแปรสำหรับส่งสถิติไป Dashboard (ระบบใหม่ต้องการสิ่งนี้)
+        self.bad_details = {} 
 
     def update(self, landmarks_list: list, label: str, confidence: float) -> tuple[bool, str]:
         hip_y  = (landmarks_list[LEFT_HIP]["y"]  + landmarks_list[RIGHT_HIP]["y"])  / 2
@@ -63,35 +69,37 @@ class RepCounter:
         rep_label = "squat_good"
 
         if self.state == "UP" and is_down:
-            # 1. จังหวะเริ่มลง
+            # 1. จังหวะเริ่มลง (เปลี่ยนจากยืนเป็นนั่ง)
             self.state = "DOWN"
-            self.current_rep_mistakes.clear()
+            # รีเซ็ตความจำใหม่ทุกครั้งที่เริ่มย่อ
+            self.is_bad_rep = False
+            self.bad_label_memory = None
 
         if self.state == "DOWN":
             # 2. จังหวะกำลังย่อตัว
-            # ถ้า AI หรือ Rule-based ทายว่าผิด ให้จดลงตะกร้าทันที
+            # ถ้าเจอท่าที่ผิดระหว่างนี้ ให้ "จำ" ไว้เลยว่า Rep นี้เสียแล้ว (ลอจิกเก่า)
             if label != "squat_good" and confidence >= GOOD_THRESHOLD:
-                self.current_rep_mistakes.add(label)
+                self.is_bad_rep = True
+                self.bad_label_memory = label 
 
-            # 3. จังหวะยืนขึ้นสุด (จบ Rep)
+            # 3. จังหวะยืนขึ้นสุด (เปลี่ยนจากนั่งเป็นยืน = จบ Rep)
             if not is_down:
                 self.state = "UP"
                 self.reps += 1
                 new_rep = True
 
-                if len(self.current_rep_mistakes) > 0:
+                # ตัดสินผลลัพธ์ของ Rep นี้จากความจำ
+                if self.is_bad_rep:
                     self.bad_count += 1
-                    # สุ่มดึงชื่อความผิดมา 1 อันเพื่อแสดงบนหน้าจอแบบ Realtime
-                    rep_label = list(self.current_rep_mistakes)[0]
+                    rep_label = self.bad_label_memory
                     
-                    # บันทึกความผิด "ทุกอาการ" ที่เกิดขึ้นในรอบนี้ลงฐานข้อมูล
-                    for mistake in self.current_rep_mistakes:
-                        self.bad_details[mistake] = self.bad_details.get(mistake, 0) + 1
+                    # 🟢 เอาท่าผิดที่จำไว้ 1 ท่า โยนใส่ตะกร้าสถิติของ Dashboard
+                    if rep_label not in self.bad_details:
+                        self.bad_details[rep_label] = 0
+                    self.bad_details[rep_label] += 1
                 else:
                     self.good_count += 1
                     rep_label = "squat_good"
-
-                self.current_rep_mistakes.clear()
 
         return new_rep, rep_label
 
@@ -100,7 +108,7 @@ class RepCounter:
             "reps":       self.reps,
             "good_count": self.good_count,
             "bad_count":  self.bad_count,
-            "bad_details": self.bad_details, # 🟢 ส่งกลับไปให้ React
+            "bad_details": self.bad_details, # ส่งก้อนสถิติไปวาดกราฟ Weakness
             "state":      self.state,
         }
 
