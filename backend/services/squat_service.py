@@ -42,6 +42,7 @@ def is_body_fully_visible(landmarks):
 
 # ── Rep Counter (อัปเกรดเป็น Basket Logic เชื่อม Dashboard ใหม่) ───────────────
 # ── Rep Counter (ใช้ลอจิกจำท่าผิดท่าเดียวแบบเก่า + เชื่อม Dashboard ใหม่) ─────────
+# ── Rep Counter (ใช้ลอจิกจำท่าผิดท่าเดียวแบบเก่า + เชื่อม Dashboard ใหม่) ─────────
 class RepCounter:
     def __init__(self):
         self.reset()
@@ -51,12 +52,8 @@ class RepCounter:
         self.state      = "UP"
         self.good_count = 0
         self.bad_count  = 0
-        
-        # 🟢 ตัวแปรสำหรับจำความผิด (ลอจิกเก่าของคุณ)
         self.is_bad_rep = False
         self.bad_label_memory = None
-        
-        # 🟢 ตัวแปรสำหรับส่งสถิติไป Dashboard (ระบบใหม่ต้องการสิ่งนี้)
         self.bad_details = {} 
 
     def update(self, landmarks_list: list, label: str, confidence: float) -> tuple[bool, str]:
@@ -71,16 +68,15 @@ class RepCounter:
         if self.state == "UP" and is_down:
             # 1. จังหวะเริ่มลง (เปลี่ยนจากยืนเป็นนั่ง)
             self.state = "DOWN"
-            # รีเซ็ตความจำใหม่ทุกครั้งที่เริ่มย่อ
             self.is_bad_rep = False
             self.bad_label_memory = None
 
         if self.state == "DOWN":
-            # 2. จังหวะกำลังย่อตัว
-            # ถ้าเจอท่าที่ผิดระหว่างนี้ ให้ "จำ" ไว้เลยว่า Rep นี้เสียแล้ว (ลอจิกเก่า)
+            # 2. จังหวะกำลังย่อตัว ถ้าทำผิดให้ "จำ" ทันที
             if label != "squat_good" and confidence >= GOOD_THRESHOLD:
                 self.is_bad_rep = True
-                self.bad_label_memory = label 
+                if self.bad_label_memory is None:
+                    self.bad_label_memory = label 
 
             # 3. จังหวะยืนขึ้นสุด (เปลี่ยนจากนั่งเป็นยืน = จบ Rep)
             if not is_down:
@@ -88,12 +84,10 @@ class RepCounter:
                 self.reps += 1
                 new_rep = True
 
-                # ตัดสินผลลัพธ์ของ Rep นี้จากความจำ
                 if self.is_bad_rep:
                     self.bad_count += 1
                     rep_label = self.bad_label_memory
                     
-                    # 🟢 เอาท่าผิดที่จำไว้ 1 ท่า โยนใส่ตะกร้าสถิติของ Dashboard
                     if rep_label not in self.bad_details:
                         self.bad_details[rep_label] = 0
                     self.bad_details[rep_label] += 1
@@ -108,7 +102,7 @@ class RepCounter:
             "reps":       self.reps,
             "good_count": self.good_count,
             "bad_count":  self.bad_count,
-            "bad_details": self.bad_details, # ส่งก้อนสถิติไปวาดกราฟ Weakness
+            "bad_details": self.bad_details, 
             "state":      self.state,
         }
 
@@ -134,7 +128,6 @@ class SquatPredictor:
         return frame
 
     def landmarks_to_vector(self, landmarks) -> np.ndarray:
-        # ฟังก์ชันเก่าสำหรับโมเดลเดิม: กระจายพิกัดเป็นแถวเดี่ยว
         row = []
         for lm in landmarks.landmark:
             row.extend([lm.x, lm.y, lm.z, lm.visibility])
@@ -173,7 +166,7 @@ class SquatPredictor:
                 **self.counter.to_dict(),
             }
 
-        # 🟢 เพิ่ม: ถ้าเห็นก้างปลาไม่ครบ ไม่ต้องวิเคราะห์ต่อ
+        # ถ้าเห็นก้างปลาไม่ครบ ไม่ต้องวิเคราะห์ต่อ
         if not is_body_fully_visible(results.pose_landmarks):
             return {
                 "pose_detected": False,  
@@ -197,11 +190,7 @@ class SquatPredictor:
         label      = le.inverse_transform([smooth_idx])[0]
         confidence = float(proba[0][smooth_idx])
 
-        # 🎯 HYBRID RULES (ดักจับความผิดปกติทับโมเดล AI)
-        lms = results.pose_landmarks.landmark
-        
-        # 1. ปิดตา AI ไม่ให้จับผิดตอนกำลังยืนพัก (UP)
-# 🎯 HYBRID RULES (ดักจับความผิดปกติทับโมเดล AI ตลอดเวลา!)
+        # 🎯 HYBRID RULES (ดักจับความผิดปกติทับโมเดล AI ตลอดเวลา!)
         lms = results.pose_landmarks.landmark
         
         LEFT_HEEL, RIGHT_HEEL = 29, 30
@@ -210,8 +199,8 @@ class SquatPredictor:
         heel_y = (lms[LEFT_HEEL].y + lms[RIGHT_HEEL].y) / 2
         foot_y = (lms[LEFT_FOOT_INDEX].y + lms[RIGHT_FOOT_INDEX].y) / 2
         
-        # 🟢 กฎส้นเท้าลอย: เช็คตลอดเวลา ไม่ว่าจะยืนหรือย่อ
-        if heel_y < foot_y - 0.04: 
+        # 🟢 กฎส้นเท้าลอย: เปลี่ยนจาก 0.04 เป็น 0.015 (เซนซิทีฟขึ้นมาก!)
+        if heel_y < foot_y - 0.015: 
             label = "squat_bad_heel"
             confidence = 0.99  
 
@@ -228,6 +217,13 @@ class SquatPredictor:
         # ── อัปเดตการนับ ──
         lm_list = self.landmarks_to_list(results.pose_landmarks)
         new_rep, rep_label = self.counter.update(lm_list, label, confidence)
+
+        # 🟢 ล็อคเป้าประจานความผิด! (แก้ก้างปลาเขียวไว & เสียงชมแทรก)
+        if new_rep:
+            label = rep_label
+        elif self.counter.state == "DOWN" and self.counter.is_bad_rep:
+            label = self.counter.bad_label_memory
+            confidence = 0.99
 
         cfg      = CLASS_CONFIG.get(rep_label, DEFAULT_CONFIG)
         feedback = cfg["feedback"] if new_rep and rep_label != "squat_good" else ""
