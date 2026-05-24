@@ -126,7 +126,7 @@ export default function DashboardPage() {
       <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* ── Section 1: Summary Cards ── */}
-      <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
+      <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch ">
           {/* กล่องที่ 1: TOTAL REPS */}
           <div className="bg-white/5 border border-white/10 rounded-2xl p-6 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-[#00ff88]/10 blur-[50px] rounded-full" />
@@ -150,20 +150,20 @@ export default function DashboardPage() {
           </div>
 
           {/* กล่องที่ 2: PLANK TIME */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 relative overflow-hidden flex flex-col justify-between">
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-[#a855f7]/10 blur-[50px] rounded-full" />
             <p className="text-xs tracking-[0.3em] text-white/40 mb-2">TOTAL PLANK TIME</p>
             <div className="text-6xl font-black text-[#a855f7]">
               {Math.floor(my_stats.total_time / 60)}<span className="text-lg text-white/30 font-normal">m</span> {(my_stats.total_time % 60).toFixed(0)}<span className="text-lg text-white/30 font-normal">s</span>
             </div>
-            <p className="text-xs text-white/50 mt-4">
+            <p className="text-xs text-white/50 mt-4 border-t border-white/10 pt-4">
               {comparison.is_above_average_time ? "⏱️ แกนกลางลำตัวแข็งแกร่งกว่าค่าเฉลี่ย!" : "🛡️ เพิ่มเวลา Hold อีกนิดนะ!"}
             </p>
           </div>
           
           {/* กล่องที่ 3: AVG ACCURACY */}
 {/* กล่องที่ 3: MY AVG ACCURACY (แก้ใหม่ให้แยกรายท่า) */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 relative overflow-hidden">
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 relative overflow-hidden min-h-[220px]">
             <div className="absolute top-0 right-0 w-32 h-32 bg-[#00b8ff]/10 blur-[50px] rounded-full" />
             <p className="text-xs tracking-[0.3em] text-white/40 mb-2">MY AVG ACCURACY</p>
             
