@@ -316,15 +316,15 @@ class SquatPredictor:
             smooth_idx = max(set(self.pred_buffer), key=self.pred_buffer.count)
             label = le.inverse_transform([smooth_idx])[0]
             confidence = float(proba[0][smooth_idx])
-# 🟢 [เพิ่มใหม่] เกราะป้องกัน "ส้นเท้าลอยทิพย์"
-            # if label == "squat_bad_heel":
-            #     # ถ้ามั่นใจไม่ถึง 80% ว่าส้นเท้าลอย ถือว่าให้ผ่าน (กันมุมกล้องเพี้ยน)
-            #     if confidence < 0.80: 
-            #         label = "squat_good"
-            #         # ดึงค่าความมั่นใจของ squat_good กลับมาแทน (ถ้ามี)
-            #         good_idx = list(le.classes_).index("squat_good") if "squat_good" in le.classes_ else 0
-            #         confidence = float(proba[0][good_idx])
-            # 🟢 อัปเดต Reps และหาจังหวะที่จบ Rep (ได้ feedback กลับมา)
+
+            if label == "squat_bad_heel":
+                # ถ้ามั่นใจไม่ถึง 80% ว่าส้นเท้าลอย ถือว่าให้ผ่าน (กันมุมกล้องเพี้ยน)
+                if confidence < 0.70: 
+                    label = "squat_good"
+                    # ดึงค่าความมั่นใจของ squat_good กลับมาแทน (ถ้ามี)
+                    good_idx = list(le.classes_).index("squat_good") if "squat_good" in le.classes_ else 0
+                    confidence = float(proba[0][good_idx])
+    
             new_rep, rep_label = self.counter.update(results.pose_landmarks, label)
             
             # ถ้าจบรอบและเป็นท่าผิด ให้โชว์คำเตือนค้างไว้สักพัก (เดี๋ยวฝั่งหน้าเว็บ React จะเอาไปหน่วงเวลาเอง)
