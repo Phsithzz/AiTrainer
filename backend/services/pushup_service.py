@@ -176,8 +176,8 @@ def build_feature_vector(feat_dict: dict, feature_cols: list) -> np.ndarray:
 # ── Rep Counter (ปรับปรุงให้เก็บ Dashboard Data) ─────────────────────────────
 # ── Rep Counter (ปรับปรุงให้เก็บ Dashboard Data และกันนับเบิ้ล) ───────────────
 class RepCounter:
-    UP_THRESHOLD   = 155 
-    DOWN_THRESHOLD = 110 
+    UP_THRESHOLD   = 145 
+    DOWN_THRESHOLD = 120 
 
     def __init__(self):
         self.reset()
