@@ -327,43 +327,47 @@ class SquatPredictor:
 
 
         label      = le.inverse_transform([smooth_idx])[0]
-
         confidence = float(proba[0][smooth_idx])
 
-
-
-        # 🎯 HYBRID RULES (ดักจับความผิดปกติทับโมเดล AI)
-
-# 🎯 HYBRID RULES (ดักจับความผิดปกติทับโมเดล AI ตลอดเวลา!)
+        # ---------------------------------------------------------
+        # 🎯 HYBRID RULES (เวอร์ชั่นแก้บั๊ก ยืนตรงแล้วโดนด่า)
+        # ---------------------------------------------------------
         lms = results.pose_landmarks.landmark
         
-        LEFT_HEEL, RIGHT_HEEL = 29, 30
-        LEFT_FOOT_INDEX, RIGHT_FOOT_INDEX = 31, 32
+        # 🟢 1. ใส่หน้ากากปิดตา AI: บังคับให้เป็น Good ไว้ก่อนตอนยืน
+        # (กัน AI หลอนทายว่าหลังงอตอนเรายืนตรง)
+        if self.counter.state == "UP":
+            label = "squat_good"
+            confidence = 1.0
         
-        heel_y = (lms[LEFT_HEEL].y + lms[RIGHT_HEEL].y) / 2
-        foot_y = (lms[LEFT_FOOT_INDEX].y + lms[RIGHT_FOOT_INDEX].y) / 2
+        # 🟢 2. กฎส้นเท้าลอย: เปลี่ยนมาใช้องศาข้อเท้า (กันกล้องมุมกดหลอกตา)
+        # คำนวณองศา เข่า(25,26) -> ข้อเท้า(27,28) -> ปลายเท้า(31,32)
+        # ถ้ายืนราบ องศาจะประมาณ 90-110° / ถ้าเขย่งส้น องศาจะกางออกไป 130-150°
+        left_ankle_angle = self._calculate_angle(
+            [lms[25].x, lms[25].y], [lms[27].x, lms[27].y], [lms[31].x, lms[31].y]
+        )
+        right_ankle_angle = self._calculate_angle(
+            [lms[26].x, lms[26].y], [lms[28].x, lms[28].y], [lms[32].x, lms[32].y]
+        )
+        avg_ankle_angle = (left_ankle_angle + right_ankle_angle) / 2
         
-        # 🟢 กฎส้นเท้าลอย: เช็คตลอดเวลา! (ปรับความเซนซิทีฟเป็น 0.02 ให้จับได้ไวขึ้นแม้ตอนยืน)
-        if heel_y < foot_y - 0.02:
+        # ถ้าข้อเท้ากางเกิน 130 องศา = เขย่งชัวร์ๆ (คำสั่งนี้ทะลุหน้ากาก UP ได้เลย!)
+        if avg_ankle_angle > 130.0:
             label = "squat_bad_heel"
-            confidence = 0.99  
+            confidence = 0.99
 
-        # 🟢 กฎหลังงอ: เช็คตลอดเวลา!
-        shoulder = [ (lms[11].x + lms[12].x)/2, (lms[11].y + lms[12].y)/2 ]
-        hip      = [ (lms[23].x + lms[24].x)/2, (lms[23].y + lms[24].y)/2 ]
-        knee     = [ (lms[25].x + lms[26].x)/2, (lms[25].y + lms[26].y)/2 ]
-        
-        back_angle = self._calculate_angle(shoulder, hip, knee)
-        if back_angle < 60.0:
-            label = "squat_bad_back"
-            confidence = 0.99  
+        # 🟢 3. กฎหลังงอ: ให้จับผิดเฉพาะตอนย่อลงไปแล้วเท่านั้น (ป้องกันหลังงอทิพย์ตอนยืน)
+        if self.counter.state == "DOWN":
+            shoulder = [ (lms[11].x + lms[12].x)/2, (lms[11].y + lms[12].y)/2 ]
+            hip      = [ (lms[23].x + lms[24].x)/2, (lms[23].y + lms[24].y)/2 ]
+            knee     = [ (lms[25].x + lms[26].x)/2, (lms[25].y + lms[26].y)/2 ]
+            
+            back_angle = self._calculate_angle(shoulder, hip, knee)
+            if back_angle < 60.0:
+                label = "squat_bad_back"
+                confidence = 0.99
 
         # ── อัปเดตการนับ ──
-
-
-
-        # อัปเดตการนับ
-# ── อัปเดตการนับ ──
         lm_list = self.landmarks_to_list(results.pose_landmarks)
         new_rep, rep_label = self.counter.update(lm_list, label, confidence)
 
