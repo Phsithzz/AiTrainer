@@ -125,7 +125,7 @@ class RepCounter:
             # 🟢 ลอจิกความอดทน: ต้องเห็นว่าผิดติดต่อกัน 4 เฟรม
             if label != "squat_good" and confidence >= 0.65: # ใช้ค่า GOOD_THRESHOLD
                 self.bad_frames_count += 1
-                if self.bad_frames_count >= 4: 
+                if self.bad_frames_count >= 2: 
                     self.is_bad_rep = True
                     if self.bad_label_memory is None:
                         self.bad_label_memory = label 
@@ -352,7 +352,7 @@ class SquatPredictor:
         avg_ankle_angle = (left_ankle_angle + right_ankle_angle) / 2
         
         # ถ้าข้อเท้ากางเกิน 130 องศา = เขย่งชัวร์ๆ (คำสั่งนี้ทะลุหน้ากาก UP ได้เลย!)
-        if avg_ankle_angle > 130.0:
+        if avg_ankle_angle > 120.0:
             label = "squat_bad_heel"
             confidence = 0.99
 
