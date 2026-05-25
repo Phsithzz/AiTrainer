@@ -102,11 +102,15 @@ export default function LoginPage({ onLogin }) {
               />
             </div>
 
-            {/* <div className="text-right mb-5">
-              <a href="#" className="text-[11px] text-white/35 tracking-widest hover:text-white transition-colors">
+  {/* 🟢 เปิดใช้งานปุ่มลืมรหัสผ่าน */}
+            <div className="text-right mb-5">
+              <button 
+                type="button" 
+                onClick={() => navigate('/forgot-password')} 
+                className="cursor-pointer text-[11px] text-white/35 tracking-widest hover:text-white transition-colors">
                 ลืมรหัสผ่าน?
-              </a>
-            </div> */}
+              </button>
+            </div>
 
             <button
               type="submit"

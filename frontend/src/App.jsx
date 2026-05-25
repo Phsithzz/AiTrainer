@@ -9,6 +9,7 @@ import RegisterPage from "./pages/RegisterPage";
 import { useHistory } from "./hooks/useHistory";
 import DashboardPage from "./pages/DashoardPage";
 import VerifyOtpPage from "./pages/VerifyOtpPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 
 export default function App() {
   const { history, fetchHistory, saveWorkout, isLoading } = useHistory();
@@ -41,6 +42,7 @@ export default function App() {
           <Route path="*"               element={<NotFoundPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/verify-otp" element={<VerifyOtpPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         </Routes>
       </div>
     </BrowserRouter>
