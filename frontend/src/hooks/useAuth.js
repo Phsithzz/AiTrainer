@@ -42,16 +42,49 @@ export function useAuth() {
             setIsLoading(false);
         }
     };
-// 🟢 [เพิ่มใหม่] ฟังก์ชันสำหรับกดยืนยันอีเมล
-    const verifyEmail = async (token) => {
+// 🟢 1. ยืนยัน OTP ตอนสมัคร
+    const verifyOtp = async (email, otp) => {
         setIsLoading(true);
         setError(null);
         try {
-            const res = await axios.get(`${API_URL}/auth/verify?token=${token}`);
-            return res.data.message; // คืนค่าข้อความสำเร็จ
+            const res = await axios.post(`${API_URL}/auth/verify-otp`, { email, otp });
+            return res.data.message;
         } catch (err) {
-            const errorMessage = err.response?.data?.detail || "การยืนยันอีเมลล้มเหลว";
-            setError(errorMessage);
+            setError(err.response?.data?.detail || "รหัส OTP ไม่ถูกต้อง");
+            return false;
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // 🟢 2. ขอ OTP เพื่อลืมรหัสผ่าน
+    const forgotPassword = async (email) => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const res = await axios.post(`${API_URL}/auth/forgot-password`, { email });
+            return res.data.message;
+        } catch (err) {
+            setError(err.response?.data?.detail || "เกิดข้อผิดพลาด");
+            return false;
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // 🟢 3. รีเซ็ตรหัสผ่านใหม่
+    const resetPassword = async (email, otp, newPassword) => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const res = await axios.post(`${API_URL}/auth/reset-password`, { 
+                email, 
+                otp, 
+                new_password: newPassword 
+            });
+            return res.data.message;
+        } catch (err) {
+            setError(err.response?.data?.detail || "รีเซ็ตรหัสผ่านไม่สำเร็จ");
             return false;
         } finally {
             setIsLoading(false);
@@ -76,5 +109,9 @@ export function useAuth() {
 
     const getToken = () => localStorage.getItem("token");
 
-   return { login, register, verifyEmail, logout, getToken, isLoading, error };
+  return { 
+        login, register, logout, getToken, 
+        verifyOtp, forgotPassword, resetPassword, 
+        isLoading, error 
+    };
 }
