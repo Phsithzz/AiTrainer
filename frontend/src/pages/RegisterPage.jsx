@@ -44,15 +44,18 @@ const handleSubmit = async (e) => {
     if (ok) setSuccess(true)
   }
 
-  if (success) return (
+if (success) return (
     <div className="min-h-screen bg-black flex items-center justify-center">
-      <div className="text-center">
-        <div className="w-14 h-14 border-2 border-[#00ff88]/50 flex items-center justify-center text-[#00ff88] text-2xl mx-auto mb-4">✓</div>
-        <h2 className="text-2xl font-black tracking-[0.15em] mb-2">สำเร็จ!</h2>
-        <p className="text-white/40 text-xs tracking-widest mb-6 font-normal">สมัครสมาชิกเรียบร้อยแล้ว</p>
+      <div className="text-center max-w-md px-6">
+        <div className="w-14 h-14 border-2 border-[#00ff88]/50 flex items-center justify-center text-[#00ff88] text-2xl mx-auto mb-4">✉️</div>
+        <h2 className="text-2xl font-black tracking-[0.15em] mb-2 text-white">เช็คอีเมลของคุณ!</h2>
+        <p className="text-white/60 text-sm tracking-wide mb-8 font-normal leading-relaxed">
+          เราได้ส่งลิงก์ยืนยันตัวตนไปที่ <span className="text-[#00ff88] font-bold">{email}</span> แล้ว <br/>
+          กรุณาคลิกลิงก์ในอีเมลเพื่อเปิดใช้งานบัญชีของคุณ
+        </p>
         <button onClick={() => navigate('/login')}
-          className="px-8 py-3 border border-white bg-white text-black font-black text-[11px] tracking-[0.25em] hover:bg-black hover:text-white transition-all">
-          LOGIN 
+          className="px-8 py-3 border border-white/20 bg-transparent text-white/50 font-black text-[11px] tracking-[0.25em] hover:bg-white/10 hover:text-white transition-all">
+          กลับไปหน้า LOGIN 
         </button>
       </div>
     </div>

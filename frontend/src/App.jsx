@@ -8,6 +8,7 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import { useHistory } from "./hooks/useHistory";
 import DashboardPage from "./pages/DashoardPage";
+import VerifyEmailPage from "./pages/VerifyEmailPage";
 
 export default function App() {
   const { history, fetchHistory, saveWorkout, isLoading } = useHistory();
@@ -39,6 +40,7 @@ export default function App() {
           <Route path="/register"        element={<RegisterPage />} />
           <Route path="*"               element={<NotFoundPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
         </Routes>
       </div>
     </BrowserRouter>

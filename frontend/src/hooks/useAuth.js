@@ -42,7 +42,21 @@ export function useAuth() {
             setIsLoading(false);
         }
     };
-
+// 🟢 [เพิ่มใหม่] ฟังก์ชันสำหรับกดยืนยันอีเมล
+    const verifyEmail = async (token) => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const res = await axios.get(`${API_URL}/auth/verify?token=${token}`);
+            return res.data.message; // คืนค่าข้อความสำเร็จ
+        } catch (err) {
+            const errorMessage = err.response?.data?.detail || "การยืนยันอีเมลล้มเหลว";
+            setError(errorMessage);
+            return false;
+        } finally {
+            setIsLoading(false);
+        }
+    };
     const logout = async () => {
         const token = localStorage.getItem("token");
         if (token) {
@@ -62,5 +76,5 @@ export function useAuth() {
 
     const getToken = () => localStorage.getItem("token");
 
-    return { login, register, logout, getToken, isLoading, error };
+   return { login, register, verifyEmail, logout, getToken, isLoading, error };
 }
