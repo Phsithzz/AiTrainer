@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from fastapi import HTTPException, Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
+import random
 import secrets
 import smtplib
 from email.mime.text import MIMEText
@@ -62,36 +63,43 @@ def get_current_user_id(credentials: HTTPAuthorizationCredentials = Security(sec
 
 
 # 🟢 ฟังก์ชันสำหรับสร้าง Token สุ่ม 64 ตัวอักษร
-def generate_verification_token() -> str:
-    return secrets.token_hex(32)
+def generate_otp() -> str:
+    return str(random.randint(100000, 999999))
 
 # 🟢 ฟังก์ชันส่งอีเมลยืนยันตัวตน
-def send_verification_email(email_to: str, token: str):
+# 🟢 ฟังก์ชันส่งอีเมลแบบ 2 ระบบ (ยืนยันตัวตน / ลืมรหัสผ่าน)
+def send_otp_email(email_to: str, otp: str, purpose: str = "register"):
     smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
     smtp_port = int(os.getenv("SMTP_PORT", 587))
     smtp_user = os.getenv("SMTP_USER")
     smtp_pass = os.getenv("SMTP_PASSWORD")
-    base_url = os.getenv("BASE_URL", "http://localhost:8000")
-
-    # ลิงก์ที่จะให้ผู้ใช้คลิกในอีเมลเพื่อเปิดมายัง Backend ของเรา
-    verify_url = f"{base_url}/auth/verify?token={token}"
 
     msg = MIMEMultipart()
     msg["From"] = smtp_user
     msg["To"] = email_to
-    msg["Subject"] = "[Decepticon] กรุณายืนยันอีเมลเพื่อเปิดใช้งานบัญชีของคุณ"
 
-    body = f"""
-    สวัสดีครับ,
-    
-    ขอบคุณที่สมัครสมาชิกแอปพลิเคชัน Decepticon AI Fitness Coach
-    กรุณาคลิกที่ลิงก์ด้านล่างนี้เพื่อยืนยันตัวตนของคุณและเข้าใช้งานระบบ:
-    
-    {verify_url}
-    
-    หากคุณไม่ได้เป็นผู้สมัครใช้งานระบบนี้ กรุณาเพิกเฉยต่ออีเมลฉบับนี้
-    ขอบคุณครับ
-    """
+    if purpose == "register":
+        msg["Subject"] = "[Decepticon] รหัส OTP สำหรับยืนยันอีเมลของคุณ"
+        body = f"""
+        สวัสดีครับ,
+        
+        รหัส OTP สำหรับยืนยันการสมัครสมาชิกของคุณคือ: {otp}
+        รหัสนี้มีอายุการใช้งาน 5 นาที
+        
+        ขอบคุณครับ
+        """
+    elif purpose == "forgot_password":
+        msg["Subject"] = "[Decepticon] รหัส OTP สำหรับกู้คืนรหัสผ่าน"
+        body = f"""
+        สวัสดีครับ,
+        
+        เราได้รับคำขอรีเซ็ตรหัสผ่านของคุณ
+        รหัส OTP สำหรับตั้งรหัสผ่านใหม่ของคุณคือ: {otp}
+        รหัสนี้มีอายุการใช้งาน 5 นาที
+        
+        หากคุณไม่ได้ทำรายการนี้ กรุณาเพิกเฉยต่ออีเมลฉบับนี้
+        """
+
     msg.attach(MIMEText(body, "plain", "utf-8"))
 
     try:
@@ -100,6 +108,6 @@ def send_verification_email(email_to: str, token: str):
         server.login(smtp_user, smtp_pass)
         server.sendmail(smtp_user, email_to, msg.as_string())
         server.quit()
-        print(f"✓ ส่งอีเมลยืนยันตัวตนสำเร็จไปยัง {email_to}")
+        print(f"✓ ส่ง OTP ({purpose}) สำเร็จไปยัง {email_to}")
     except Exception as e:
-        print(f"🚨 เกิดข้อผิดพลาดในการส่งอีเมล: {e}")
+        print(f"🚨 เกิดข้อผิดพลาดในการส่ง OTP: {e}")
