@@ -7,6 +7,12 @@ from dotenv import load_dotenv
 from fastapi import HTTPException, Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
+import secrets
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+
 load_dotenv()
 DB_URL = os.getenv("DATABASE_URL")
 SECRET_KEY = os.getenv("SECRET_KEY", "default-secret-key")
@@ -52,3 +58,48 @@ def get_current_user_id(credentials: HTTPAuthorizationCredentials = Security(sec
         return user_id
     except JWTError:
         raise HTTPException(status_code=401, detail="Token หมดอายุหรือไม่ถูกต้อง")
+    
+
+
+# 🟢 ฟังก์ชันสำหรับสร้าง Token สุ่ม 64 ตัวอักษร
+def generate_verification_token() -> str:
+    return secrets.token_hex(32)
+
+# 🟢 ฟังก์ชันส่งอีเมลยืนยันตัวตน
+def send_verification_email(email_to: str, token: str):
+    smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    smtp_port = int(os.getenv("SMTP_PORT", 587))
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_pass = os.getenv("SMTP_PASSWORD")
+    base_url = os.getenv("BASE_URL", "http://localhost:8000")
+
+    # ลิงก์ที่จะให้ผู้ใช้คลิกในอีเมลเพื่อเปิดมายัง Backend ของเรา
+    verify_url = f"{base_url}/auth/verify?token={token}"
+
+    msg = MIMEMultipart()
+    msg["From"] = smtp_user
+    msg["To"] = email_to
+    msg["Subject"] = "[Decepticon] กรุณายืนยันอีเมลเพื่อเปิดใช้งานบัญชีของคุณ"
+
+    body = f"""
+    สวัสดีครับ,
+    
+    ขอบคุณที่สมัครสมาชิกแอปพลิเคชัน Decepticon AI Fitness Coach
+    กรุณาคลิกที่ลิงก์ด้านล่างนี้เพื่อยืนยันตัวตนของคุณและเข้าใช้งานระบบ:
+    
+    {verify_url}
+    
+    หากคุณไม่ได้เป็นผู้สมัครใช้งานระบบนี้ กรุณาเพิกเฉยต่ออีเมลฉบับนี้
+    ขอบคุณครับ
+    """
+    msg.attach(MIMEText(body, "plain", "utf-8"))
+
+    try:
+        server = smtplib.SMTP(smtp_host, smtp_port)
+        server.starttls()
+        server.login(smtp_user, smtp_pass)
+        server.sendmail(smtp_user, email_to, msg.as_string())
+        server.quit()
+        print(f"✓ ส่งอีเมลยืนยันตัวตนสำเร็จไปยัง {email_to}")
+    except Exception as e:
+        print(f"🚨 เกิดข้อผิดพลาดในการส่งอีเมล: {e}")
