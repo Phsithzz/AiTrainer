@@ -13,7 +13,6 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // 🟢 ดึงชื่อผู้ใช้จาก LocalStorage
   const username = localStorage.getItem("username") || "GUEST";
 
   useEffect(() => {
@@ -66,11 +65,39 @@ export default function DashboardPage() {
     );
   }
 
-  // ── เตรียมข้อมูลสำหรับ Recharts ──
-  // 🟢 แก้ไข: เพิ่ม comparison เข้าไปในการดึงข้อมูลด้วย
   const { my_stats, global_stats, comparison } = data;
   
-  const chartData = [
+  // 🟢 1. ข้อมูลกราฟเปรียบเทียบกับ "เกณฑ์มาตรฐานคนทั่วไป" (Hardcoded Standards)
+  const standardChartData = [
+    {
+      name: 'SQUAT (Reps)',
+      You: my_stats.reps_by_ex.squat,
+      Standard: 15, // มาตรฐาน 15 ครั้ง
+    },
+    {
+      name: 'PUSH UP (Reps)',
+      You: my_stats.reps_by_ex.pushup,
+      Standard: 10, // มาตรฐาน 10 ครั้ง
+    },
+    {
+      name: 'SQUAT ACC %',
+      You: my_stats.acc_by_ex.squat,
+      Standard: 80, // ความแม่นยำมาตรฐาน 80%
+    },
+    {
+      name: 'PUSH UP ACC %',
+      You: my_stats.acc_by_ex.pushup,
+      Standard: 80, // ความแม่นยำมาตรฐาน 80%
+    },
+    {
+      name: 'PLANK (Sec)',
+      You: my_stats.time_by_ex.plank,
+      Standard: 45, // มาตรฐาน 45 วินาที
+    }
+  ];
+
+  // 🟢 2. ข้อมูลกราฟเปรียบเทียบกับ "คนทั้งเซิร์ฟเวอร์" (Global Average)
+  const globalChartData = [
     {
       name: 'SQUAT (Reps)',
       You: my_stats.reps_by_ex.squat,
@@ -112,7 +139,6 @@ export default function DashboardPage() {
           PERFORMANCE DASHBOARD
         </h1>
 
-        {/* 🟢 เพิ่ม Profile Badge แสดงชื่อผู้ใช้งาน */}
         <div className="flex items-center gap-3">
           <span className="text-[10px] tracking-widest text-white/50 uppercase">
             {username.split('@')[0]}
@@ -126,7 +152,7 @@ export default function DashboardPage() {
       <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* ── Section 1: Summary Cards ── */}
-      <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
+        <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
           {/* กล่องที่ 1: TOTAL REPS */}
           <div className="bg-white/5 border border-white/10 rounded-2xl p-6 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-[#00ff88]/10 blur-[50px] rounded-full" />
@@ -161,8 +187,7 @@ export default function DashboardPage() {
             </p>
           </div>
           
-          {/* กล่องที่ 3: AVG ACCURACY */}
-{/* กล่องที่ 3: MY AVG ACCURACY (แก้ใหม่ให้แยกรายท่า) */}
+          {/* กล่องที่ 3: MY AVG ACCURACY */}
           <div className="bg-white/5 border border-white/10 rounded-2xl p-6 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-[#00b8ff]/10 blur-[50px] rounded-full" />
             <p className="text-xs tracking-[0.3em] text-white/40 mb-2">MY AVG ACCURACY</p>
@@ -171,7 +196,6 @@ export default function DashboardPage() {
               {my_stats.average_accuracy}% 
             </div>
             
-            {/* 🟢 เพิ่มรายละเอียดแยกท่าตรงนี้ */}
             <div className="grid grid-cols-2 gap-4 mt-4 border-t border-white/10 pt-4">
               <div>
                 <p className="text-[9px] tracking-widest text-white/40 mb-1">SQUAT</p>
@@ -189,28 +213,53 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* ── Section 2: Global Comparison Chart ── */}
-        <div className="lg:col-span-2 bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col">
-          <h2 className="text-sm tracking-[0.2em] text-white/60 font-bold mb-6">GLOBAL COMPARISON</h2>
-          <div className="flex-1 w-full min-h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
-                <XAxis dataKey="name" stroke="#ffffff50" tick={{ fill: '#ffffff50', fontSize: 12 }} />
-                <YAxis stroke="#ffffff50" tick={{ fill: '#ffffff50', fontSize: 12 }} />
-                <Tooltip 
-                  cursor={{ fill: '#ffffff10' }}
-                  contentStyle={{ backgroundColor: '#0a0a0f', borderColor: '#ffffff20', borderRadius: '8px' }}
-                />
-                <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '20px' }} />
-                <Bar dataKey="You" name="สถิติของคุณ" fill="#00ff88" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="GlobalAvg" name="ค่าเฉลี่ยรวม" fill="#ffffff20" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+        {/* ── Section 2: Charts Area (2 กราฟซ้อนกัน) ── */}
+        <div className="lg:col-span-2 flex flex-col gap-6">
+          
+          {/* กราฟที่ 1: เปรียบเทียบมาตรฐานคนทั่วไป */}
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col">
+            <h2 className="text-sm tracking-[0.2em] text-[#00b8ff] font-bold mb-6">STANDARD BENCHMARK</h2>
+            <div className="flex-1 w-full min-h-[250px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={standardChartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                  <XAxis dataKey="name" stroke="#ffffff50" tick={{ fill: '#ffffff50', fontSize: 12 }} />
+                  <YAxis stroke="#ffffff50" tick={{ fill: '#ffffff50', fontSize: 12 }} />
+                  <Tooltip 
+                    cursor={{ fill: '#ffffff10' }}
+                    contentStyle={{ backgroundColor: '#0a0a0f', borderColor: '#ffffff20', borderRadius: '8px' }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
+                  <Bar dataKey="You" name="สถิติของคุณ" fill="#00ff88" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Standard" name="เกณฑ์มาตรฐาน" fill="#00b8ff50" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
+
+          {/* กราฟที่ 2: เปรียบเทียบผู้ใช้ทั้งระบบ */}
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col">
+            <h2 className="text-sm tracking-[0.2em] text-white/60 font-bold mb-6">GLOBAL SERVER AVERAGE</h2>
+            <div className="flex-1 w-full min-h-[250px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={globalChartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                  <XAxis dataKey="name" stroke="#ffffff50" tick={{ fill: '#ffffff50', fontSize: 12 }} />
+                  <YAxis stroke="#ffffff50" tick={{ fill: '#ffffff50', fontSize: 12 }} />
+                  <Tooltip 
+                    cursor={{ fill: '#ffffff10' }}
+                    contentStyle={{ backgroundColor: '#0a0a0f', borderColor: '#ffffff20', borderRadius: '8px' }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
+                  <Bar dataKey="You" name="สถิติของคุณ" fill="#00ff88" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="GlobalAvg" name="ค่าเฉลี่ยผู้ใช้ทั้งหมด" fill="#ffffff20" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
         </div>
 
         {/* ── Section 3: Weakness Analysis (Drill-down) ── */}
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col">
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col h-[580px] lg:h-auto">
           <h2 className="text-sm tracking-[0.2em] text-[#ff3b30] font-bold mb-2">WEAKNESS ANALYSIS</h2>
           <p className="text-xs text-white/40 mb-6">จุดอ่อนที่คุณทำผิดพลาดบ่อยที่สุด (แยกตามท่า)</p>
           
