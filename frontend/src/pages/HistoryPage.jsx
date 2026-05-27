@@ -153,12 +153,12 @@ export default function HistoryPage({ history, fetchHistory, isLoading }) {
         ) : (
           <>
             {/* Summary stats */}
-            <div className="grid grid-cols-4 gap-3 mb-10">
+            <div className="grid grid-cols-3 gap-3 mb-10">
               {[
                 { label: "SESSIONS",   value: sessions.length,       color: "#fff"    },
                 { label: "TOTAL REPS", value: totalReps,              color: "#00ff88" },
                 { label: "PLANK TIME", value: formatTime(totalTime),  color: "#a855f7" },
-                { label: "ACCURACY",   value: `${goodRate}%`,         color: goodRate >= 70 ? "#00ff88" : "#ff9500" },
+        
               ].map((s) => (
                 <div key={s.label} className="bg-white/[0.03] border border-white/5 rounded-xl p-4 text-center">
                   <div className="text-2xl font-black" style={{ color: s.color }}>{s.value}</div>
