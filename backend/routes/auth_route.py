@@ -26,6 +26,7 @@ class VerifyOTP(BaseModel):
     otp: str
 
 class ForgotPassword(BaseModel):
+    username: str
     email: EmailStr
 
 class ResetPassword(BaseModel):
@@ -92,22 +93,21 @@ def forgot_password(data: ForgotPassword, background_tasks: BackgroundTasks):
     cursor = conn.cursor()
     otp = generate_otp()
     try:
-        # อัปเดต OTP ให้ผู้ใช้ที่ลืมรหัส (ถ้าอีเมลมีอยู่จริง)
+        # 🟢 แก้ SQL: ต้องตรงทั้ง username และ email
         cursor.execute(
-            "UPDATE users SET otp_code = %s, otp_expire_at = NOW() + INTERVAL '5 minutes' WHERE email = %s RETURNING id",
-            (otp, data.email)
+            "UPDATE users SET otp_code = %s, otp_expire_at = NOW() + INTERVAL '5 minutes' WHERE username = %s AND email = %s RETURNING id",
+            (otp, data.username, data.email)
         )
         user = cursor.fetchone()
         if user:
             conn.commit()
             background_tasks.add_task(send_otp_email, data.email, otp, "forgot_password")
         else:
-            # ถ้าไม่มีอีเมลนี้ เราจะไม่ฟ้อง Error ตรงๆ เพื่อป้องกันคนมาไล่สุ่มเดาอีเมล (Security Practice)
             pass 
     finally:
         cursor.close()
         conn.close()
-    return {"message": "หากอีเมลนี้อยู่ในระบบ เราได้ส่งรหัส OTP 6 หลักไปให้แล้ว"}
+    return {"message": "หากข้อมูลถูกต้อง เราได้ส่งรหัส OTP ไปที่อีเมลของคุณแล้ว"}
 
 # ── 4. ระบบรีเซ็ตรหัสผ่าน ──
 @router.post("/reset-password")
