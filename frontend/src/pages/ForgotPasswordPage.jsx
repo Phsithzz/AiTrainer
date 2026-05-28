@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 
 export default function ForgotPasswordPage() {
   const [step, setStep] = useState(1); // 1: กรอกอีเมล, 2: กรอก OTP + รหัสใหม่
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -15,11 +16,12 @@ export default function ForgotPasswordPage() {
   // ── Step 1: ส่งคำขอ OTP ──
   const handleRequestOtp = async (e) => {
     e.preventDefault();
+    if (!username) return alert("กรุณากรอก Username");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return alert("รูปแบบอีเมลไม่ถูกต้อง");
     }
 
-    const msg = await forgotPassword(email);
+   const msg = await forgotPassword(username, email);
     if (msg) {
       setStep(2); // เปลี่ยนไปหน้ากรอก OTP
     }
@@ -77,7 +79,13 @@ export default function ForgotPasswordPage() {
               <p className="text-xs tracking-widest text-white/40 mb-6 leading-relaxed">
                 กรุณากรอกอีเมลที่ใช้สมัครสมาชิก <br/>ระบบจะส่งรหัส OTP 6 หลักไปให้คุณ
               </p>
-              
+              <div className="mb-4">
+                <label className="block text-[10px] tracking-[0.25em] text-white/40 uppercase mb-1.5 font-normal">Username</label>
+                <input type="text" value={username} onChange={e => setUsername(e.target.value.toLowerCase())}
+                  placeholder="ชื่อผู้ใช้ของคุณ"
+                  className="w-full bg-transparent border border-white/15 text-white text-sm px-4 py-3 outline-none focus:border-white/60 placeholder:text-white/20 tracking-wide transition-colors"
+                />
+              </div>
               <div className="mb-6">
                 <label className="block text-[10px] tracking-[0.25em] text-white/40 uppercase mb-1.5 font-normal">Email</label>
                 <input type="email" value={email} onChange={e => setEmail(e.target.value)}
