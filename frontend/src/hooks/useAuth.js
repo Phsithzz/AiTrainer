@@ -58,11 +58,13 @@ export function useAuth() {
     };
 
     // 🟢 2. ขอ OTP เพื่อลืมรหัสผ่าน
-    const forgotPassword = async (email) => {
+// 🟢 เพิ่ม parameter username เข้าไป
+    const forgotPassword = async (username, email) => {
         setIsLoading(true);
         setError(null);
         try {
-            const res = await axios.post(`${API_URL}/auth/forgot-password`, { email });
+            // ส่งไปทั้งคู่
+            const res = await axios.post(`${API_URL}/auth/forgot-password`, { username, email });
             return res.data.message;
         } catch (err) {
             setError(err.response?.data?.detail || "เกิดข้อผิดพลาด");
