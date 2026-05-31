@@ -1,12 +1,16 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import Swal from 'sweetalert2';
+import Swal from 'sweetalert2'
+import { AiOutlineEye, AiOutlineEyeInvisible } from 'react-icons/ai'
+
 export default function RegisterPage() {
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPw, setConfirmPw] = useState('')
+  const [showPw, setShowPw] = useState(false)
+  const [showConfirmPw, setShowConfirmPw] = useState(false)
   // eslint-disable-next-line no-unused-vars
   const [agreed, setAgreed] = useState(false)
   // eslint-disable-next-line no-unused-vars
@@ -176,13 +180,19 @@ const showError = (message) => {
               <label className="block text-[10px] font-bold tracking-[0.2em] text-zinc-500 uppercase mb-2 pl-1">
                 Password
               </label>
-              <input 
-                type="password" 
-                value={password} 
-                onChange={e => setPassword(e.target.value)}
-                placeholder="Min 8 characters"
-                className="w-full bg-black/40 border border-zinc-800 text-white text-sm px-5 py-3.5 rounded-xl outline-none focus:border-zinc-400 focus:bg-zinc-900 placeholder:text-zinc-600 tracking-wide transition-all duration-300"
-              />
+              <div className="relative">
+                <input
+                  type={showPw ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="Min 8 characters"
+                  className="w-full bg-black/40 border border-zinc-800 text-white text-sm px-5 py-3.5 pr-12 rounded-xl outline-none focus:border-zinc-400 focus:bg-zinc-900 placeholder:text-zinc-600 tracking-wide transition-all duration-300"
+                />
+                <button type="button" onClick={() => setShowPw(v => !v)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white transition-colors cursor-pointer">
+                  {showPw ? <AiOutlineEyeInvisible size={18} /> : <AiOutlineEye size={18} />}
+                </button>
+              </div>
               {password && (
                 <div className="mt-2 ml-1">
                   <div className="flex gap-1.5 mb-1.5">
@@ -203,18 +213,24 @@ const showError = (message) => {
               <label className="block text-[10px] font-bold tracking-[0.2em] text-zinc-500 uppercase mb-2 pl-1">
                 Confirm Password
               </label>
-              <input 
-                type="password" 
-                value={confirmPw} 
-                onChange={e => setConfirmPw(e.target.value)}
-                placeholder="Confirm your password"
-                className="w-full bg-black/40 border border-zinc-800 text-white text-sm px-5 py-3.5 rounded-xl outline-none focus:bg-zinc-900 placeholder:text-zinc-600 tracking-wide transition-all duration-300"
-                style={{ 
-                  borderColor: confirmPw 
-                    ? (password === confirmPw ? 'rgba(34,197,94,0.5)' : 'rgba(239,68,68,0.5)') 
-                    : undefined 
-                }}
-              />
+              <div className="relative">
+                <input
+                  type={showConfirmPw ? 'text' : 'password'}
+                  value={confirmPw}
+                  onChange={e => setConfirmPw(e.target.value)}
+                  placeholder="Confirm your password"
+                  className="w-full bg-black/40 border border-zinc-800 text-white text-sm px-5 py-3.5 pr-12 rounded-xl outline-none focus:bg-zinc-900 placeholder:text-zinc-600 tracking-wide transition-all duration-300"
+                  style={{
+                    borderColor: confirmPw
+                      ? (password === confirmPw ? 'rgba(34,197,94,0.5)' : 'rgba(239,68,68,0.5)')
+                      : undefined
+                  }}
+                />
+                <button type="button" onClick={() => setShowConfirmPw(v => !v)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white transition-colors cursor-pointer">
+                  {showConfirmPw ? <AiOutlineEyeInvisible size={18} /> : <AiOutlineEye size={18} />}
+                </button>
+              </div>
               {confirmPw && (
                 <p className="text-[10px] mt-2 ml-1 tracking-widest font-medium"
                   style={{ color: password === confirmPw ? '#22c55e' : '#ef4444' }}>

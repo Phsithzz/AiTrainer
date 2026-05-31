@@ -10,6 +10,7 @@ import { useHistory } from "./hooks/useHistory";
 import DashboardPage from "./pages/DashoardPage";
 import VerifyOtpPage from "./pages/VerifyOtpPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ProfilePage from "./pages/ProfilePage";
 
 export default function App() {
   const { history, fetchHistory, saveWorkout, isLoading } = useHistory();
@@ -37,12 +38,20 @@ export default function App() {
             }
           />
           <Route path="/history"         element={<HistoryPage fetchHistory={fetchHistory} history={history} isLoading={isLoading} />} />
-         <Route path="/login" element={<LoginPage onLogin={() => setIsLoggedIn(true)} />} />
+         <Route path="/login" element={<LoginPage onLogin={() => {
+              setIsLoggedIn(true);
+              const pending = sessionStorage.getItem('pendingWorkout');
+              if (pending) {
+                sessionStorage.removeItem('pendingWorkout');
+                saveWorkout(JSON.parse(pending));
+              }
+            }} />} />
           <Route path="/register"        element={<RegisterPage />} />
           <Route path="*"               element={<NotFoundPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/verify-otp" element={<VerifyOtpPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/profile" element={<ProfilePage/>}/>
         </Routes>
       </div>
     </BrowserRouter>

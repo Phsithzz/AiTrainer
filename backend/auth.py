@@ -92,13 +92,36 @@ def send_otp_email(email_to: str, otp: str, purpose: str = "register"):
         msg["Subject"] = "[Decepticon] รหัส OTP สำหรับกู้คืนรหัสผ่าน"
         body = f"""
         สวัสดีครับ,
-        
+
         เราได้รับคำขอรีเซ็ตรหัสผ่านของคุณ
         รหัส OTP สำหรับตั้งรหัสผ่านใหม่ของคุณคือ: {otp}
         รหัสนี้มีอายุการใช้งาน 5 นาที
-        
+
         หากคุณไม่ได้ทำรายการนี้ กรุณาเพิกเฉยต่ออีเมลฉบับนี้
         """
+    elif purpose == "forgot_username":
+        msg["Subject"] = "[Decepticon] Username ของคุณ"
+        body = f"""
+        สวัสดีครับ,
+
+        คุณได้ขอกู้คืน Username ของบัญชีที่ผูกกับอีเมลนี้
+        Username ของคุณคือ: {otp}
+
+        หากคุณไม่ได้ทำรายการนี้ กรุณาเพิกเฉยต่ออีเมลฉบับนี้
+        """
+    elif purpose == "email_change":
+        msg["Subject"] = "[Decepticon] ยืนยันการเปลี่ยน Email ใหม่ของคุณ"
+        body = f"""
+        สวัสดีครับ,
+
+        มีคำขอเปลี่ยน Email มายังที่อยู่นี้
+        รหัส OTP สำหรับยืนยัน Email ใหม่ของคุณคือ: {otp}
+        รหัสนี้มีอายุการใช้งาน 5 นาที
+
+        หากคุณไม่ได้ทำรายการนี้ กรุณาเพิกเฉยต่ออีเมลฉบับนี้
+        """
+    else:
+        return
 
     msg.attach(MIMEText(body, "plain", "utf-8"))
 

@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import axios from 'axios';
+import Swal from 'sweetalert2';
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
@@ -45,17 +46,13 @@ export function useHistory() {
             // fetchHistory(); 
 
         } catch (error) {
-            // ดัก Error ของ Axios ได้ง่ายขึ้นมาก
-            if (error.response) {
-                // เซิร์ฟเวอร์ตอบกลับมาเป็น Error (เช่น 422, 500)
-                console.error(`เซิร์ฟเวอร์ปฏิเสธข้อมูล (Status: ${error.response.status}):`, error.response.data);
-            } else if (error.request) {
-                // ส่งคำขอไปแล้ว แต่เซิร์ฟเวอร์ไม่ตอบกลับ (เน็ตหลุด / เซิร์ฟล่ม)
-                console.error("เซิร์ฟเวอร์ไม่ตอบสนอง:", error.request);
-            } else {
-                // เกิดข้อผิดพลาดในโค้ดฝั่ง React เอง
-                console.error("เกิดข้อผิดพลาด:", error.message);
-            }
+            console.error("Save workout error:", error.response?.data || error.message);
+            Swal.fire({
+                icon: 'error', title: 'SAVE FAILED',
+                text: 'ไม่สามารถบันทึกผลการฝึกซ้อมได้ กรุณาลองใหม่อีกครั้ง',
+                background: '#18181b', color: '#a1a1aa', confirmButtonColor: '#ef4444',
+                customClass: { popup: 'border border-red-500/30 rounded-3xl', title: 'text-red-500 font-black tracking-widest', confirmButton: 'text-white font-bold tracking-widest rounded-full px-8 py-3 mt-2' }
+            });
         }
     };
 

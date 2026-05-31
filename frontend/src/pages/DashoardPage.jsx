@@ -105,8 +105,7 @@ export default function DashboardPage() {
   const standardChartData = [
     { name: 'SQUAT (Reps)', You: my_stats.reps_by_ex.squat, Standard: 15 },
     { name: 'PUSH UP (Reps)', You: my_stats.reps_by_ex.pushup, Standard: 10 },
-    { name: 'SQUAT ACC %', You: my_stats.acc_by_ex.squat, Standard: 80 },
-    { name: 'PUSH UP ACC %', You: my_stats.acc_by_ex.pushup, Standard: 80 },
+   
     { name: 'PLANK (Sec)', You: my_stats.time_by_ex.plank, Standard: 45 }
   ];
 
@@ -114,8 +113,7 @@ export default function DashboardPage() {
   const globalChartData = [
     { name: 'SQUAT (Reps)', You: my_stats.reps_by_ex.squat, GlobalAvg: global_stats.reps_by_ex.squat },
     { name: 'PUSH UP (Reps)', You: my_stats.reps_by_ex.pushup, GlobalAvg: global_stats.reps_by_ex.pushup },
-    { name: 'SQUAT ACC %', You: my_stats.acc_by_ex.squat, GlobalAvg: global_stats.acc_by_ex.squat },
-    { name: 'PUSH UP ACC %', You: my_stats.acc_by_ex.pushup, GlobalAvg: global_stats.acc_by_ex.pushup },
+ 
     { name: 'PLANK (Sec)', You: my_stats.time_by_ex.plank, GlobalAvg: global_stats.time_by_ex.plank }
   ];
 
@@ -147,7 +145,7 @@ export default function DashboardPage() {
           <span className="hidden md:block text-[11px] tracking-widest text-zinc-400 uppercase font-medium">
             {username.split('@')[0]}
           </span>
-          <div className="cursor-pointer w-10 h-10 rounded-full bg-zinc-900 border border-zinc-700 flex items-center justify-center text-white font-black text-sm uppercase shadow-inner hover:border-white/50 transition-colors duration-300">
+          <div onClick={() => navigate('/profile')} className="cursor-pointer w-10 h-10 rounded-full bg-zinc-900 border border-zinc-700 flex items-center justify-center text-white font-black text-sm uppercase shadow-inner hover:border-[#00ff88] hover:text-[#00ff88] transition-colors duration-300">
             {username.substring(0, 1)}
           </div>
         </div>

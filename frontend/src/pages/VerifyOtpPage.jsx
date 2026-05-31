@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import Swal from 'sweetalert2';
+
 export default function VerifyOtpPage() {
   const [otp, setOtp] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
   const navigate = useNavigate();
   const location = useLocation();
-  const { verifyOtp, isLoading, error } = useAuth();
+  const { verifyOtp, resendOtp, isLoading, error } = useAuth();
   
   // รับอีเมลที่ส่งมาจากหน้า Register
   const email = location.state?.email || '';
@@ -48,6 +50,25 @@ Swal.fire({
       }).then(() => {
         navigate('/login');
       });
+    }
+  };
+
+  const handleResend = async () => {
+    const msg = await resendOtp(email);
+    if (msg) {
+      Swal.fire({
+        icon: 'success', title: 'OTP SENT', text: msg,
+        background: '#18181b', color: '#a1a1aa', confirmButtonColor: '#00ff88',
+        customClass: { popup: 'border border-[#00ff88]/30 rounded-3xl', title: 'text-[#00ff88] font-black tracking-widest', confirmButton: 'text-black font-black tracking-widest rounded-full px-8 py-3 mt-2' }
+      });
+      // cooldown 60 วิ กันกด spam
+      setResendCooldown(60);
+      const t = setInterval(() => {
+        setResendCooldown(c => {
+          if (c <= 1) { clearInterval(t); return 0; }
+          return c - 1;
+        });
+      }, 1000);
     }
   };
 
@@ -116,14 +137,24 @@ Swal.fire({
               />
             </div>
             
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               disabled={isLoading}
               className="cursor-pointer w-full py-4 bg-[#00ff88] text-black font-black text-[11px] tracking-[0.2em] uppercase rounded-full hover:bg-[#00e67a] hover:shadow-[0_0_20px_rgba(0,255,136,0.4)] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? 'VERIFYING...' : 'CONFIRM ACCOUNT'}
             </button>
           </form>
+
+          <div className="mt-6 text-center">
+            <button
+              onClick={handleResend}
+              disabled={isLoading || resendCooldown > 0}
+              className="cursor-pointer text-[11px] font-medium text-zinc-500 tracking-wider hover:text-white transition-colors duration-300 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {resendCooldown > 0 ? `Resend OTP (${resendCooldown}s)` : "ไม่ได้รับรหัส? ส่งใหม่"}
+            </button>
+          </div>
 
         </div>
       </main>

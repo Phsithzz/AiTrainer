@@ -201,8 +201,50 @@ export default function TrainPage({ onFinish, isLoggedIn }) {
     }
   };
 
+  const handleForceFinish = () => {
+    Swal.fire({
+      title: 'FORCE FINISH?',
+      text: 'จบ session ก่อนครบเป้าหมาย — ข้อมูลจนถึงตอนนี้จะถูกบันทึก',
+      background: '#18181b',
+      color: '#a1a1aa',
+      showCancelButton: true,
+      confirmButtonText: 'FINISH SESSION',
+      cancelButtonText: 'CONTINUE',
+      confirmButtonColor: accent,
+      customClass: {
+        popup: 'border border-zinc-700 rounded-3xl',
+        title: 'text-white font-black tracking-widest text-xl',
+        confirmButton: 'text-black font-black tracking-widest rounded-full px-8 py-3',
+        cancelButton: 'text-white font-bold tracking-widest rounded-full px-8 py-3',
+      }
+    }).then((res) => {
+      if (res.isConfirmed) handleFinish();
+    });
+  };
+
   const handleBack = () => {
-    navigate("/");
+    if (active) {
+      Swal.fire({
+        title: 'EXIT SESSION?',
+        text: 'ออกกลางคัน — ข้อมูล session นี้จะไม่ถูกบันทึก',
+        background: '#18181b',
+        color: '#a1a1aa',
+        showCancelButton: true,
+        confirmButtonText: 'EXIT',
+        cancelButtonText: 'STAY',
+        confirmButtonColor: '#ef4444',
+        customClass: {
+          popup: 'border border-red-500/30 rounded-3xl',
+          title: 'text-white font-black tracking-widest text-xl',
+          confirmButton: 'text-white font-black tracking-widest rounded-full px-8 py-3',
+          cancelButton: 'text-zinc-400 font-bold tracking-widest rounded-full px-8 py-3',
+        }
+      }).then((res) => {
+        if (res.isConfirmed) navigate('/');
+      });
+    } else {
+      navigate('/');
+    }
   };
 
   const formatTime = (sec) => {
@@ -369,7 +411,23 @@ export default function TrainPage({ onFinish, isLoggedIn }) {
                 </div>
                 <div className="flex flex-col gap-4 w-64">
                   <button
-                    onClick={() => navigate("/login")}
+                    onClick={() => {
+                      const finalGood = accumulatedStats.good + good;
+                      const finalBad = accumulatedStats.bad + bad;
+                      const finalTime = accumulatedStats.time + totalTime;
+                      const totalAttempts = finalGood + finalBad;
+                      const sessionResult = {
+                        exercise,
+                        reps: isTimer ? 0 : totalAttempts,
+                        good: isTimer ? 0 : finalGood,
+                        bad: finalBad,
+                        accuracy: isTimer ? 0 : (totalAttempts > 0 ? Math.round((finalGood / totalAttempts) * 100) : 0),
+                        total_time: isTimer ? finalTime : 0.0,
+                        bad_details: result?.bad_details || {}
+                      };
+                      sessionStorage.setItem('pendingWorkout', JSON.stringify(sessionResult));
+                      navigate('/login');
+                    }}
                     className="cursor-pointer w-full py-4 text-xs tracking-widest font-black rounded-full shadow-[0_0_20px_rgba(0,0,0,0.4)] transition-all hover:scale-105"
                     style={{ background: `linear-gradient(135deg, ${accent}, ${accent}aa)`, color: "#000" }}
                   >
@@ -530,7 +588,7 @@ export default function TrainPage({ onFinish, isLoggedIn }) {
                   RESET SET
                 </button>
                 <button
-                  onClick={handleFinish}
+                  onClick={handleForceFinish}
                   className="cursor-pointer w-full py-4 text-xs tracking-widest font-black rounded-full shadow-[0_0_20px_rgba(0,0,0,0.3)] transition-all hover:scale-105"
                   style={{ background: `linear-gradient(135deg, ${accent}, ${accent}aa)`, color: "#000" }}
                 >

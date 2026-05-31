@@ -4,7 +4,8 @@ import { GrNext } from "react-icons/gr";
 import plank_mode from "../assets/images/plank_mode.png";
 import squat_mode from "../assets/images/squat_mode.jpg";
 import push_up_mode from "../assets/images/pushmode.png";
-import { useAuth } from "../hooks/useAuth"; // เพิ่ม
+import { useAuth } from "../hooks/useAuth";
+import Swal from "sweetalert2";
 const EXERCISES = [
   {
     id: "squat",
@@ -50,13 +51,26 @@ const username = localStorage.getItem("username") || "GUEST";
   // 🟢 ฟังก์ชันดักจับการคลิก
   const handleLogout = async () => {
       setShowLogoutModal(false);
-    await logout(); // เรียก API blacklist token
-    window.location.href = '/login';
+    await logout();
+    navigate('/login');
     // navigate("/"); // redirect ไป login
   };
   const handleSelect = (ex) => {
     if (!ex.available) {
-      alert("โหมดนี้กำลังอยู่ในการพัฒนา (Coming Soon!)");
+      Swal.fire({
+        icon: 'info',
+        title: 'COMING SOON',
+        text: 'โหมดนี้กำลังอยู่ในการพัฒนา รอติดตามได้เลย!',
+        background: '#18181b',
+        color: '#a1a1aa',
+        confirmButtonText: 'GOT IT',
+        confirmButtonColor: '#eab308',
+        customClass: {
+          popup: 'border border-yellow-500/30 rounded-3xl',
+          title: 'text-yellow-400 font-black tracking-widest text-xl',
+          confirmButton: 'text-black font-bold tracking-widest rounded-full px-8 py-3 mt-2'
+        }
+      });
       return;
     }
     navigate(`/train/${ex.id}`);
@@ -195,11 +209,11 @@ const username = localStorage.getItem("username") || "GUEST";
           <span className="hidden md:inline-block text-[10px] tracking-widest text-white/50 uppercase">
             {username.split('@')[0]} {/* ถ้าเป็นอีเมล จะตัดเอาแค่ชื่อหน้า @ มาโชว์ */}
           </span>
-          <div className="w-8 h-8 rounded-full cursor-pointer
+          <Link to="profile" className="w-8 h-8 rounded-full cursor-pointer
           hover:border-white/30 px-4 py-2  shadow-[2px_2px_0px_white]
           bg-white/5 border border-white flex items-center justify-center text-white  text-xs uppercase">
             {username.substring(0, 1)} {/* เอาตัวอักษรตัวแรกมาทำเป็นโลโก้ */}
-          </div>
+          </Link>
         </div>
       </header>
 

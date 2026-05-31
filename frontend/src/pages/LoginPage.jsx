@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import Swal from 'sweetalert2' // 🟢 Import SweetAlert2
+import Swal from 'sweetalert2'
+import { AiOutlineEye, AiOutlineEyeInvisible } from 'react-icons/ai'
 
 export default function LoginPage({ onLogin }) {
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
+  const [showPw, setShowPw] = useState(false)
   const { login, isLoading, error } = useAuth()
   const navigate = useNavigate()
 
@@ -148,13 +150,19 @@ export default function LoginPage({ onLogin }) {
               <label className="block text-[10px] font-bold tracking-[0.2em] text-zinc-500 uppercase mb-2 pl-1">
                 Password
               </label>
-              <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full bg-black/40 border border-zinc-800 text-white text-sm px-5 py-3.5 rounded-xl outline-none focus:border-zinc-400 focus:bg-zinc-900 placeholder:text-zinc-600 tracking-wide transition-all duration-300"
-              />
+              <div className="relative">
+                <input
+                  type={showPw ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full bg-black/40 border border-zinc-800 text-white text-sm px-5 py-3.5 pr-12 rounded-xl outline-none focus:border-zinc-400 focus:bg-zinc-900 placeholder:text-zinc-600 tracking-wide transition-all duration-300"
+                />
+                <button type="button" onClick={() => setShowPw(v => !v)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white transition-colors cursor-pointer">
+                  {showPw ? <AiOutlineEyeInvisible size={18} /> : <AiOutlineEye size={18} />}
+                </button>
+              </div>
             </div>
 
             <div className="text-right mb-8">
