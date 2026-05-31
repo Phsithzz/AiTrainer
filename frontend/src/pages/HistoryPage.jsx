@@ -24,46 +24,52 @@ export default function HistoryPage({ history, fetchHistory, isLoading }) {
 
   useEffect(() => {
     if (token) fetchHistory();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── ไม่ได้ login ────────────────────────────────────────────────────────────
+  // ── 1. กรณีไม่ได้ login (แสดงหน้า LOCKED) ──────────────────────────────────
   if (!token) {
     return (
-      <div className="relative min-h-screen flex flex-col bg-black overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none"
+      <div className="relative min-h-screen flex flex-col bg-[#0a0a0a] text-white overflow-hidden selection:bg-white/30">
+        
+        {/* Background Grid Pattern */}
+        <div className="absolute inset-0 pointer-events-none opacity-40"
           style={{
-            backgroundImage: "linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)",
-            backgroundSize: "40px 40px",
+            backgroundImage: "linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)",
+            backgroundSize: "60px 60px",
           }} />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#0a0a0a]/50 to-[#0a0a0a] pointer-events-none" />
 
-        <header className="relative z-10 flex items-center justify-between px-6 py-4 border-b-2 border-white">
+        <header className="relative z-10 flex items-center justify-between px-6 md:px-12 py-6 border-b border-white/10 bg-black/20 backdrop-blur-sm">
           <button onClick={() => navigate("/")}
-            className="cursor-pointer flex items-center gap-2 text-xs tracking-widest text-white/40 hover:text-white transition-colors">
-            <IoMdArrowRoundBack /> BACK
+            className="cursor-pointer flex items-center gap-3 text-[11px] font-bold tracking-widest text-zinc-400 hover:text-white transition-colors duration-300 bg-zinc-900/50 px-5 py-2.5 rounded-full border border-zinc-800 hover:border-white/50">
+            <IoMdArrowRoundBack size={16} /> BACK TO HOME
           </button>
-          <span className="text-xs tracking-[0.4em] text-white/30">SESSION HISTORY</span>
-          <div className="w-16" />
         </header>
 
         <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 text-center">
-          <div className="text-[10px] tracking-[0.5em] text-white/30 uppercase mb-4">Access Required</div>
-          <h1 className="text-6xl font-black tracking-[0.15em] text-white mb-2">HISTORY</h1>
-          <h2 className="text-6xl font-black tracking-[0.2em] mb-8"
-            style={{ WebkitTextStroke: "2px rgba(255,255,255,0.4)", color: "transparent" }}>
-            LOCKED
-          </h2>
-          <p className="text-white/40 text-sm tracking-widest mb-10">
-            เข้าสู่ระบบเพื่อดูประวัติการออกกำลังกายของคุณ
-          </p>
-          <div className="flex gap-4">
-            <button onClick={() => navigate("/login")}
-              className="px-8 py-3 bg-white text-black font-black text-xs tracking-[0.25em] uppercase hover:bg-black hover:text-white border border-white transition-all">
-              LOGIN →
-            </button>
-            <button onClick={() => navigate("/register")}
-              className="px-8 py-3 text-white font-black text-xs tracking-[0.25em] uppercase border border-white/30 hover:border-white transition-all">
-              REGISTER
-            </button>
+          <div className="w-full max-w-md border border-zinc-800 bg-zinc-900/40 p-10 rounded-3xl backdrop-blur-md shadow-[0_10px_50px_rgba(0,0,0,0.5)]">
+            <div className="text-[10px] tracking-[0.4em] text-red-500 uppercase mb-4 font-bold drop-shadow-[0_0_8px_rgba(239,68,68,0.4)]">
+              Access Required
+            </div>
+            <h1 className="text-4xl md:text-5xl font-black tracking-widest text-white mb-2">HISTORY</h1>
+            <h2 className="text-4xl md:text-5xl font-black tracking-[0.15em] mb-8"
+              style={{ WebkitTextStroke: "1px rgba(255,255,255,0.4)", color: "transparent" }}>
+              LOCKED
+            </h2>
+            <p className="text-zinc-400 text-[11px] tracking-widest mb-10 font-medium">
+              กรุณาเข้าสู่ระบบเพื่อดูประวัติการฝึกซ้อมของคุณ
+            </p>
+            <div className="flex gap-4">
+              <button onClick={() => navigate("/login")}
+                className="cursor-pointer flex-1 py-3.5 bg-white text-black font-black text-[11px] tracking-[0.2em] uppercase rounded-full hover:bg-zinc-200 hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] transition-all duration-300">
+                LOGIN →
+              </button>
+              <button onClick={() => navigate("/register")}
+                className="cursor-pointer flex-1 py-3.5 text-zinc-400 font-bold text-[11px] tracking-[0.2em] uppercase rounded-full border border-zinc-800 hover:border-zinc-500 hover:text-white transition-all duration-300">
+                REGISTER
+              </button>
+            </div>
           </div>
         </main>
 
@@ -72,71 +78,69 @@ export default function HistoryPage({ history, fetchHistory, isLoading }) {
     );
   }
 
-  // ── login แล้ว ──────────────────────────────────────────────────────────────
-  const sessions = history;
+  // ── 2. กรณี login แล้ว (แสดงประวัติ) ──────────────────────────────────────
+  const sessions = history || [];
 
-  const totalReps = sessions.filter(s => EXERCISE_META[s.exercise]?.mode === "reps")
-    .reduce((sum, s) => sum + (s.reps || 0), 0);
-  const totalGood = sessions.filter(s => EXERCISE_META[s.exercise]?.mode === "reps")
-    .reduce((sum, s) => sum + (s.good || 0), 0);
-  const totalTime = sessions.filter(s => EXERCISE_META[s.exercise]?.mode === "timer")
-    .reduce((sum, s) => sum + (s.total_time || 0), 0);
-  const goodRate  = totalReps > 0 ? Math.round((totalGood / totalReps) * 100) : 0;
+  const totalReps = sessions.filter(s => EXERCISE_META[s.exercise]?.mode === "reps").reduce((sum, s) => sum + (s.reps || 0), 0);
+  // eslint-disable-next-line no-unused-vars
+  const totalGood = sessions.filter(s => EXERCISE_META[s.exercise]?.mode === "reps").reduce((sum, s) => sum + (s.good || 0), 0);
+  const totalTime = sessions.filter(s => EXERCISE_META[s.exercise]?.mode === "timer").reduce((sum, s) => sum + (s.total_time || 0), 0);
 
   return (
-    <div className="relative min-h-screen flex flex-col bg-black overflow-hidden">
-      <div className="absolute inset-0 pointer-events-none"
+    <div className="relative min-h-screen flex flex-col bg-[#0a0a0a] text-white overflow-hidden selection:bg-white/30">
+      
+      {/* Background Grid Pattern */}
+      <div className="absolute inset-0 pointer-events-none opacity-40"
         style={{
-          backgroundImage: "linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)",
-          backgroundSize: "40px 40px",
+          backgroundImage: "linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)",
+          backgroundSize: "60px 60px",
         }} />
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#0a0a0a]/50 to-[#0a0a0a] pointer-events-none" />
 
-      <header className="relative z-10 flex items-center justify-between px-6 py-4 border-b-2 border-white">
+      {/* Header */}
+      <header className="relative z-10 flex items-center justify-between px-6 md:px-12 py-6 border-b border-white/10 bg-black/20 backdrop-blur-sm mb-6">
         <button onClick={() => navigate("/")}
-          className="cursor-pointer flex items-center gap-2 text-xs tracking-widest text-white/40 hover:text-white transition-colors">
-          <IoMdArrowRoundBack /> BACK
+          className="cursor-pointer flex items-center gap-3 text-[11px] font-bold tracking-widest text-zinc-400 hover:text-white transition-colors duration-300 bg-zinc-900/50 px-5 py-2.5 rounded-full border border-zinc-800 hover:border-white/50">
+          <IoMdArrowRoundBack size={16} /> BACK TO HOME
         </button>
-        <span className="text-xs tracking-[0.4em] text-white/30">SESSION HISTORY</span>
-        <div className="w-16" />
+        <span className="text-xl md:text-2xl tracking-[0.3em] font-black text-transparent bg-clip-text bg-gradient-to-r from-zinc-300 to-zinc-500 hidden md:block drop-shadow-md">
+          SESSION HISTORY
+        </span>
+        <div className="w-24 hidden md:block" /> {/* Spacer */}
       </header>
 
-      <div className="relative z-10 flex-1 max-w-3xl mx-auto w-full px-6 py-10">
+      <div className="relative z-10 flex-1 max-w-4xl mx-auto w-full px-6 py-6 mb-12">
         {isLoading ? (
-          // ── SKELETON LOADING ──────────────────────────────────────────────
+          // ── SKELETON LOADING (Futuristic UI) ────────────────────────────────
           <div className="w-full">
             {/* Skeleton Summary stats */}
-            <div className="grid grid-cols-4 gap-3 mb-10">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="bg-white/[0.02] border border-white/5 rounded-xl p-4 flex flex-col items-center justify-center h-[88px] animate-pulse">
-                  <div className="w-10 h-6 bg-white/10 rounded mb-2" />
-                  <div className="w-16 h-2 bg-white/5 rounded" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-zinc-900/40 border border-zinc-800 rounded-3xl p-6 flex flex-col items-center justify-center h-[120px] animate-pulse backdrop-blur-sm">
+                  <div className="w-16 h-8 bg-zinc-700/50 rounded-md mb-3" />
+                  <div className="w-24 h-3 bg-zinc-800 rounded-full" />
                 </div>
               ))}
             </div>
 
-            <div className="text-[10px] tracking-[0.4em] text-white/20 mb-4 animate-pulse">
-              <div className="w-20 h-3 bg-white/10 rounded" />
+            <div className="text-[11px] tracking-[0.4em] text-zinc-600 font-bold mb-4 animate-pulse">
+              <div className="w-24 h-4 bg-zinc-800 rounded-md" />
             </div>
 
             {/* Skeleton Session List */}
-            <div className="flex flex-col gap-3">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="flex items-center gap-4 bg-white/[0.02] border border-white/5 rounded-xl px-5 py-4 animate-pulse">
-                  {/* ภาพ Icon */}
-                  <div className="w-20 h-20 bg-white/5 rounded-lg shrink-0" />
-                  
-                  {/* ชื่อท่าและวันที่ */}
+            <div className="flex flex-col gap-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="flex items-center gap-6 bg-zinc-900/40 border border-zinc-800 rounded-3xl px-6 py-5 animate-pulse backdrop-blur-sm">
+                  <div className="w-20 h-20 bg-zinc-800 rounded-2xl shrink-0" />
                   <div className="flex-1 py-2">
-                    <div className="w-24 h-4 bg-white/10 rounded mb-3" />
-                    <div className="w-32 h-2.5 bg-white/5 rounded" />
+                    <div className="w-32 h-5 bg-zinc-700/50 rounded-md mb-3" />
+                    <div className="w-40 h-3 bg-zinc-800 rounded-full" />
                   </div>
-
-                  {/* สถิติด้านขวา (Reps, Good, Bad, Rate) */}
-                  <div className="flex items-center gap-5 pr-2">
+                  <div className="hidden md:flex items-center gap-6 pr-4">
                     {[1, 2, 3, 4].map((j) => (
                       <div key={j} className="flex flex-col items-center">
-                        <div className="w-8 h-6 bg-white/10 rounded mb-1.5" />
-                        <div className="w-10 h-2 bg-white/5 rounded" />
+                        <div className="w-10 h-6 bg-zinc-700/50 rounded-md mb-2" />
+                        <div className="w-12 h-2 bg-zinc-800 rounded-full" />
                       </div>
                     ))}
                   </div>
@@ -145,30 +149,32 @@ export default function HistoryPage({ history, fetchHistory, isLoading }) {
             </div>
           </div>
         ) : sessions.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 text-center">
-            <RiTodoLine className="size-20 text-white/10 mb-4" />
-            <div className="text-white/50 text-sm tracking-widest">ยังไม่มีประวัติการฝึก</div>
-            <div className="text-white/30 text-xs mt-2">เริ่มฝึกและกด FINISH SESSION เพื่อบันทึก</div>
+          // ── EMPTY STATE ──────────────────────────────────────────────────
+          <div className="flex flex-col items-center justify-center h-[60vh] text-center bg-zinc-900/20 border border-zinc-800/50 rounded-3xl backdrop-blur-sm">
+            <RiTodoLine className="size-24 text-zinc-700 mb-6 drop-shadow-lg" />
+            <div className="text-zinc-400 text-[11px] font-bold tracking-[0.2em] uppercase mb-2">ยังไม่มีประวัติการฝึกซ้อม</div>
+            <div className="text-zinc-600 text-xs font-medium tracking-wide">เริ่มฝึกและกด FINISH SESSION เพื่อบันทึกข้อมูล</div>
           </div>
         ) : (
+          // ── POPULATED STATE ──────────────────────────────────────────────
           <>
-            {/* Summary stats */}
-            <div className="grid grid-cols-3 gap-3 mb-10">
+            {/* Summary stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
               {[
-                { label: "SESSIONS",   value: sessions.length,       color: "#fff"    },
-                { label: "TOTAL REPS", value: totalReps,              color: "#00ff88" },
-                { label: "PLANK TIME", value: formatTime(totalTime),  color: "#a855f7" },
-        
+                { label: "TOTAL SESSIONS", value: sessions.length,  color: "#ffffff" },
+                { label: "TOTAL REPS",     value: totalReps,        color: "#00ff88" },
+                { label: "TOTAL PLANK TIME",value: formatTime(totalTime), color: "#a855f7" },
               ].map((s) => (
-                <div key={s.label} className="bg-white/[0.03] border border-white/5 rounded-xl p-4 text-center">
-                  <div className="text-2xl font-black" style={{ color: s.color }}>{s.value}</div>
-                  <div className="text-[9px] tracking-widest text-white/25 mt-1">{s.label}</div>
+                <div key={s.label} className="bg-zinc-900/40 border border-zinc-800 rounded-3xl p-6 text-center backdrop-blur-md shadow-lg transition-transform duration-300 hover:-translate-y-1 cursor-default">
+                  <div className="text-4xl font-black drop-shadow-md mb-2" style={{ color: s.color }}>{s.value}</div>
+                  <div className="text-[10px] font-bold tracking-[0.2em] text-zinc-500 uppercase">{s.label}</div>
                 </div>
               ))}
             </div>
 
-            <div className="text-[10px] tracking-[0.4em] text-white/20 mb-4">SESSIONS</div>
-            <div className="flex flex-col gap-3">
+            <div className="text-[11px] font-black tracking-[0.3em] text-zinc-500 mb-4 uppercase drop-shadow-sm">ALL SESSIONS</div>
+            
+            <div className="flex flex-col gap-4">
               {sessions.map((s, i) => {
                 const meta    = EXERCISE_META[s.exercise] || {};
                 const isTimer = meta.mode === "timer";
@@ -178,46 +184,55 @@ export default function HistoryPage({ history, fetchHistory, isLoading }) {
 
                 return (
                   <div key={i}
-                    className="flex items-center gap-4 bg-white/[0.03] border border-white/5 rounded-xl px-5 py-4 hover:border-white/10 transition-colors">
-                    <img src={meta.icon} className="w-20 h-20 object-contain" alt={meta.label} />
+                    className="group flex flex-col md:flex-row items-start md:items-center gap-6 bg-zinc-900/40 border border-zinc-800 rounded-3xl p-5 md:px-6 md:py-5 backdrop-blur-sm transition-all duration-300 hover:bg-zinc-800/40 hover:border-zinc-600 shadow-md cursor-default relative overflow-hidden">
+                    
+                    {/* Glow effect on hover */}
+                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+                      style={{ background: `radial-gradient(circle at 10% 50%, ${meta.color}10 0%, transparent 40%)` }} />
 
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-black tracking-widest" style={{ color: meta.color }}>
+                    <img src={meta.icon} className="w-20 h-20 object-contain drop-shadow-lg shrink-0 rounded-2xl bg-black/40 p-2 border border-white/5" alt={meta.label} />
+
+                    <div className="flex-1 w-full relative z-10">
+                      <div className="flex items-center justify-between md:justify-start gap-4 mb-2">
+                        <span className="text-sm font-black tracking-[0.15em] drop-shadow-sm" style={{ color: meta.color }}>
                           {meta.label}
                         </span>
-                        <span className="text-[10px] text-white/20">#{sessions.length - i}</span>
+                        <span className="text-[10px] font-bold text-zinc-600 bg-zinc-900 px-2 py-1 rounded-md border border-zinc-800">
+                          #{sessions.length - i}
+                        </span>
                       </div>
-                      <div className="text-[10px] text-white/25">
+                      <div className="text-[11px] font-medium tracking-wide text-zinc-400">
                         {s.date
-                          ? new Date(s.date).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" })
+                          ? new Date(s.date).toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" })
                           : "—"}
                       </div>
                     </div>
 
-                    {isTimer ? (
-                      <div className="text-center">
-                        <div className="text-xl font-black" style={{ color: meta.color }}>
-                          {formatTime(s.total_time || 0)}
-                        </div>
-                        <div className="text-[9px] tracking-widest text-white/25">HOLD TIME</div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-5 text-center">
-                        {[
-                          ["REPS", s.reps,       "#fff"    ],
-                          ["GOOD", s.good, "#00ff88" ],
-                          ["BAD",  s.bad,  "#ff9500" ],
-                          ["RATE", rate != null ? `${rate}%` : "–",
-                           rate != null ? (rate >= 70 ? "#00ff88" : "#ff9500") : "#666"],
-                        ].map(([l, v, c]) => (
-                          <div key={l}>
-                            <div className="text-xl font-black" style={{ color: c }}>{v}</div>
-                            <div className="text-[9px] tracking-widest text-white/25">{l}</div>
+                    <div className="w-full md:w-auto mt-4 md:mt-0 pt-4 md:pt-0 border-t border-zinc-800 md:border-none relative z-10">
+                      {isTimer ? (
+                        <div className="text-center md:text-right pr-2">
+                          <div className="text-2xl font-black drop-shadow-md mb-1" style={{ color: meta.color }}>
+                            {formatTime(s.total_time || 0)}
                           </div>
-                        ))}
-                      </div>
-                    )}
+                          <div className="text-[10px] font-bold tracking-[0.2em] text-zinc-500">HOLD TIME</div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between md:justify-end gap-6 text-center px-2 md:px-0">
+                          {[
+                            ["REPS", s.reps,       "#ffffff" ],
+                            ["GOOD", s.good,       "#00ff88" ],
+                            ["BAD",  s.bad,        "#ef4444" ], // เปลี่ยนสีส้มเป็นแดงให้ดูชัดเจน
+                            ["RATE", rate != null ? `${rate}%` : "–",
+                              rate != null ? (rate >= 70 ? "#00ff88" : "#ef4444") : "#52525b"],
+                          ].map(([l, v, c]) => (
+                            <div key={l} className="flex flex-col items-center">
+                              <div className="text-xl md:text-2xl font-black drop-shadow-md mb-1" style={{ color: c }}>{v}</div>
+                              <div className="text-[9px] font-bold tracking-[0.2em] text-zinc-500">{l}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -233,12 +248,12 @@ export default function HistoryPage({ history, fetchHistory, isLoading }) {
 
 function Footer() {
   return (
-    <footer className="relative z-10 flex items-center justify-center gap-4 py-4 border-t-2 border-white">
-      <span className="text-[9px] font-black tracking-[0.2em] text-white">MEDIAPIPE</span>
-      <span className="w-1 h-1 rounded-full bg-white/60" />
-      <span className="text-[9px] font-black tracking-[0.2em] text-white">SKLEARN</span>
-      <span className="w-1 h-1 rounded-full bg-white/60" />
-      <span className="text-[9px] font-black tracking-[0.2em] text-white">FASTAPI WEBSOCKET</span>
+    <footer className="relative z-10 flex flex-wrap items-center justify-center gap-4 md:gap-8 py-6 border-t border-white/5 bg-black/40 backdrop-blur-md text-[10px] text-zinc-500 tracking-widest uppercase font-medium mt-auto">
+      <span>MEDIAPIPE</span>
+      <span className="hidden md:block w-1 h-1 rounded-full bg-zinc-700" />
+      <span>SKLEARN</span>
+      <span className="hidden md:block w-1 h-1 rounded-full bg-zinc-700" />
+      <span>FASTAPI WEBSOCKET</span>
     </footer>
   );
 }

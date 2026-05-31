@@ -2,6 +2,7 @@ import { useRef, useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useExerciseWS } from "../hooks/useExerciseWS";
 import { IoMdArrowRoundBack } from "react-icons/io";
+import Swal from 'sweetalert2'; // 🟢 Import SweetAlert2
 
 export default function TrainPage({ onFinish, isLoggedIn }) {
   const { exercise } = useParams();
@@ -70,7 +71,23 @@ export default function TrainPage({ onFinish, isLoggedIn }) {
         }
       } catch (err) {
         console.error("Camera error:", err);
-        alert("กรุณาอนุญาตให้เข้าถึงกล้องเพื่อใช้งาน");
+        // 🟢 เปลี่ยนจาก alert() ธรรมดา เป็น SweetAlert2
+        Swal.fire({
+          icon: 'error',
+          title: 'CAMERA ACCESS DENIED',
+          text: 'กรุณาอนุญาตให้เข้าถึงกล้องเพื่อใช้งานระบบ Form Trainer',
+          background: '#18181b',
+          color: '#a1a1aa',
+          confirmButtonText: 'ACKNOWLEDGE',
+          confirmButtonColor: '#ef4444',
+          customClass: {
+            popup: 'border border-red-500/30 rounded-3xl',
+            title: 'text-red-500 font-black tracking-widest text-xl',
+            confirmButton: 'text-white font-bold tracking-widest rounded-full px-8 py-3 mt-2'
+          }
+        }).then(() => {
+          navigate('/'); // กลับหน้าแรกถ้าไม่ให้สิทธิ์
+        });
       }
     };
     startCamera();
@@ -80,7 +97,7 @@ export default function TrainPage({ onFinish, isLoggedIn }) {
         videoRef.current.srcObject.getTracks().forEach((t) => t.stop());
       }
     };
-  }, []);
+  }, [navigate]);
 
   // 🟢 3. จัดการนับถอยหลัง
   useEffect(() => {
@@ -195,38 +212,49 @@ export default function TrainPage({ onFinish, isLoggedIn }) {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#0a0a0f]">
-      {/* header */}
-      <header className="flex items-center justify-between px-6 py-4 border-b-2 border-white">
+    <div className="relative min-h-screen flex flex-col bg-[#0a0a0a] text-white overflow-hidden selection:bg-white/30">
+      
+      {/* 🟢 Background Grid Pattern */}
+      <div className="absolute inset-0 pointer-events-none opacity-40"
+        style={{
+          backgroundImage: "linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)",
+          backgroundSize: "60px 60px",
+        }} />
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#0a0a0a]/50 to-[#0a0a0a] pointer-events-none" />
+
+      {/* ── Header ── */}
+      <header className="relative z-10 flex items-center justify-between px-6 md:px-12 py-6 border-b border-white/10 bg-black/20 backdrop-blur-sm">
         <button
           onClick={handleBack}
-          className="flex items-center gap-2 cursor-pointer text-xs tracking-widest text-white/40 hover:text-white transition-colors"
+          className="cursor-pointer flex items-center gap-3 text-[11px] font-bold tracking-widest text-zinc-400 hover:text-white transition-colors duration-300 bg-zinc-900/50 px-5 py-2.5 rounded-full border border-zinc-800 hover:border-white/50"
         >
-          <IoMdArrowRoundBack /> BACK
+          <IoMdArrowRoundBack size={16} /> BACK
         </button>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4 bg-zinc-900/50 border border-zinc-800 px-4 py-2 rounded-full">
           <div
-            className="w-2 h-2 rounded-full animate-pulse"
+            className="w-2.5 h-2.5 rounded-full animate-pulse shadow-[0_0_8px_currentColor]"
             style={{
-              backgroundColor: wsStatus === "connected" ? accent : wsStatus === "connecting" ? "#ff9500" : "#ff3b30",
+              backgroundColor: wsStatus === "connected" ? accent : wsStatus === "connecting" ? "#eab308" : "#ef4444",
+              color: wsStatus === "connected" ? accent : wsStatus === "connecting" ? "#eab308" : "#ef4444"
             }}
           />
-          <span className="text-xs tracking-widest text-white/30 uppercase">{wsStatus}</span>
+          <span className="text-[10px] font-bold tracking-widest text-zinc-400 uppercase">{wsStatus}</span>
         </div>
 
         <span
-          className="text-xs tracking-[0.3em] font-black px-3 py-1 rounded"
+          className="text-[11px] tracking-[0.3em] font-black px-4 py-2 rounded-full bg-zinc-900/50"
           style={{ color: accent, border: `1px solid ${accent}40` }}
         >
           {exercise?.toUpperCase()}
         </span>
       </header>
 
-      <div className="flex-1 flex flex-col lg:flex-row">
-        {/* ── Camera ── */}
-        <div className="relative flex-1 p-4 lg:p-8 bg-black flex items-center justify-center min-h-90">
-          <div className="relative w-full max-w-7xl aspect-video bg-black rounded-xl overflow-hidden shadow-2xl border-4 border-white flex items-center justify-center">
+      <div className="relative z-10 flex-1 flex flex-col lg:flex-row">
+        {/* ── Camera Area ── */}
+        <div className="relative flex-1 p-4 lg:p-8 flex items-center justify-center min-h-[50vh] lg:min-h-0">
+          <div className="relative w-full max-w-5xl aspect-video bg-zinc-950 rounded-3xl overflow-hidden shadow-[0_10px_50px_rgba(0,0,0,0.5)] border border-zinc-800 flex items-center justify-center">
+            
             <video
               ref={videoRef}
               autoPlay
@@ -245,39 +273,39 @@ export default function TrainPage({ onFinish, isLoggedIn }) {
             {!active && !finished && hasPermission && (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-20 backdrop-blur-md">
                 <div className="text-white mb-8 text-center">
-                  <p className="text-2xl tracking-[0.2em] font-black" style={{ color: accent }}>
+                  <p className="text-2xl md:text-4xl tracking-[0.2em] font-black drop-shadow-md" style={{ color: accent }}>
                     SET YOUR TARGET
                   </p>
-                  <p className="text-xs opacity-50 mt-2 tracking-widest uppercase">
+                  <p className="text-[11px] text-zinc-400 mt-3 tracking-widest uppercase font-medium">
                     กำหนดเป้าหมายก่อนเริ่ม
                   </p>
                 </div>
                 
-                <div className="flex gap-8 mb-10">
+                <div className="flex flex-col md:flex-row gap-6 md:gap-12 mb-10">
                    <div className="flex flex-col items-center">
-                     <label className="text-[10px] text-white/50 tracking-[0.2em] mb-3 uppercase">Total Sets</label>
-                     <div className="flex items-center gap-4 border border-white/20 bg-white/5 px-4 py-2 rounded-xl">
-                       <button onClick={() => setTargetSets(Math.max(1, targetSets - 1))} className="text-2xl text-white/50 hover:text-white pb-1 w-8 cursor-pointer">-</button>
-                       <span className="text-3xl font-black text-white w-12 text-center">{targetSets}</span>
-                       <button onClick={() => setTargetSets(targetSets + 1)} className="text-2xl text-white/50 hover:text-white pb-1 w-8 cursor-pointer">+</button>
+                     <label className="text-[10px] text-zinc-500 font-bold tracking-[0.2em] mb-3 uppercase">Total Sets</label>
+                     <div className="flex items-center gap-4 border border-zinc-700 bg-zinc-900/80 px-4 py-2 rounded-2xl shadow-inner">
+                       <button onClick={() => setTargetSets(Math.max(1, targetSets - 1))} className="cursor-pointer text-3xl text-zinc-500 hover:text-white pb-1 w-10 transition-colors">-</button>
+                       <span className="text-4xl font-black text-white w-16 text-center">{targetSets}</span>
+                       <button onClick={() => setTargetSets(targetSets + 1)} className="cursor-pointer text-3xl text-zinc-500 hover:text-white pb-1 w-10 transition-colors">+</button>
                      </div>
                    </div>
 
                    <div className="flex flex-col items-center">
-                     <label className="text-[10px] text-white/50 tracking-[0.2em] mb-3 uppercase">
+                     <label className="text-[10px] text-zinc-500 font-bold tracking-[0.2em] mb-3 uppercase">
                         {isTimer ? 'Seconds / Set' : 'Reps / Set'}
                      </label>
-                     <div className="flex items-center gap-4 border border-white/20 bg-white/5 px-4 py-2 rounded-xl">
-                       <button onClick={() => setTargetReps(Math.max(1, targetReps - (isTimer ? 5 : 1)))} className="text-2xl text-white/50 hover:text-white pb-1 w-8 cursor-pointer">-</button>
-                       <span className="text-3xl font-black text-white w-16 text-center">{targetReps}</span>
-                       <button onClick={() => setTargetReps(targetReps + (isTimer ? 5 : 1))} className="text-2xl text-white/50 hover:text-white pb-1 w-8 cursor-pointer">+</button>
+                     <div className="flex items-center gap-4 border border-zinc-700 bg-zinc-900/80 px-4 py-2 rounded-2xl shadow-inner">
+                       <button onClick={() => setTargetReps(Math.max(1, targetReps - (isTimer ? 5 : 1)))} className="cursor-pointer text-3xl text-zinc-500 hover:text-white pb-1 w-10 transition-colors">-</button>
+                       <span className="text-4xl font-black text-white w-20 text-center">{targetReps}</span>
+                       <button onClick={() => setTargetReps(targetReps + (isTimer ? 5 : 1))} className="cursor-pointer text-3xl text-zinc-500 hover:text-white pb-1 w-10 transition-colors">+</button>
                      </div>
                    </div>
                 </div>
 
                 <button
                   onClick={handleStart}
-                  className="cursor-pointer px-12 py-4 text-sm tracking-[0.3em] font-black rounded-xl transition-all active:scale-95 hover:scale-105 shadow-[0_0_20px_rgba(0,0,0,0.5)]"
+                  className="cursor-pointer px-12 py-4 text-xs tracking-[0.3em] font-black rounded-full transition-all active:scale-95 hover:scale-105 hover:shadow-[0_0_30px_rgba(255,255,255,0.2)]"
                   style={{ background: `linear-gradient(135deg, ${accent}, ${accent}aa)`, color: "#000" }}
                 >
                   START WORKOUT
@@ -288,16 +316,16 @@ export default function TrainPage({ onFinish, isLoggedIn }) {
             {/* 🟢 REST overlay (พักระหว่างเซ็ต) */}
             {isResting && (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-30 backdrop-blur-md">
-                 <div className="text-6xl mb-4">😮‍💨</div>
-                 <div className="text-3xl font-black text-white mb-2 tracking-widest">
-                    SET {currentSet} COMPLETED
+                 <div className="text-7xl mb-6 animate-pulse">😮‍💨</div>
+                 <div className="text-3xl md:text-5xl font-black text-white mb-4 tracking-widest drop-shadow-lg">
+                   SET {currentSet} COMPLETED
                  </div>
-                 <div className="text-[#00ff88] text-xs tracking-widest mb-10">
-                    เยี่ยมมาก! พักหายใจก่อนเริ่มเซ็ตต่อไป
+                 <div className="text-zinc-400 text-[11px] font-medium tracking-widest mb-12 uppercase">
+                   Great job! Catch your breath before the next set.
                  </div>
                  <button
                   onClick={handleNextSet}
-                  className="cursor-pointer px-10 py-4 text-sm tracking-[0.3em] font-black rounded-xl transition-all active:scale-95 hover:scale-105 shadow-[0_0_20px_rgba(0,0,0,0.5)]"
+                  className="cursor-pointer px-10 py-4 text-xs tracking-[0.3em] font-black rounded-full transition-all active:scale-95 hover:scale-105 shadow-[0_0_20px_rgba(0,0,0,0.5)]"
                   style={{ background: `linear-gradient(135deg, ${accent}, ${accent}aa)`, color: "#000" }}
                 >
                   START SET {currentSet + 1}
@@ -307,23 +335,23 @@ export default function TrainPage({ onFinish, isLoggedIn }) {
 
             {/* Loading overlay */}
             {!active && !finished && !hasPermission && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-20">
-                <div className="w-8 h-8 border-4 border-white/20 border-t-white rounded-full animate-spin mb-4"></div>
-                <div className="text-white/50 text-xs tracking-widest uppercase">Waiting for camera...</div>
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-20 backdrop-blur-sm">
+                <div className="w-10 h-10 border-4 border-zinc-800 border-t-[#00ff88] rounded-full animate-spin mb-6 shadow-[0_0_15px_rgba(0,255,136,0.3)]"></div>
+                <div className="text-zinc-500 text-[10px] font-bold tracking-widest uppercase animate-pulse">Waiting for camera...</div>
               </div>
             )}
 
             {/* FINISH overlay */}
             {finished && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-20">
-                <div className="text-7xl mb-4">🏁</div>
-                <div className="text-2xl font-black text-white mb-2">SESSION DONE</div>
-                <div className="text-white/60 text-xs tracking-widest mb-8">
-                  {isLoggedIn ? "ผลลัพธ์ถูกบันทึกแล้ว" : "ออกโดยไม่บันทึก"}
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-20 backdrop-blur-md">
+                <div className="text-7xl mb-6">🏁</div>
+                <div className="text-3xl md:text-5xl font-black text-white mb-4 drop-shadow-lg">SESSION DONE</div>
+                <div className="text-zinc-400 text-[11px] font-medium tracking-widest mb-10 uppercase">
+                  {isLoggedIn ? "Session results saved to your profile" : "Exited without saving"}
                 </div>
                 <button
                   onClick={handleBack}
-                  className="cursor-pointer px-8 py-3 text-sm tracking-widest text-black font-black rounded-lg"
+                  className="cursor-pointer px-10 py-4 text-xs tracking-widest text-black font-black rounded-full transition-all hover:scale-105"
                   style={{ background: accent }}
                 >
                   BACK TO HOME
@@ -333,28 +361,28 @@ export default function TrainPage({ onFinish, isLoggedIn }) {
 
             {/* LOGIN PROMPT overlay */}
             {shouldPromptLogin && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-20 backdrop-blur-sm">
-                <div className="text-5xl mb-4">💾</div>
-                <div className="text-xl font-black text-white mb-2">บันทึกผลลัพธ์?</div>
-                <div className="text-white/50 text-xs tracking-widest text-center mb-8 px-8">
-                  เข้าสู่ระบบเพื่อบันทึกข้อมูล<br />การออกกำลังกายของคุณ
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-30 backdrop-blur-md">
+                <div className="text-7xl mb-6 drop-shadow-[0_0_20px_rgba(255,255,255,0.2)]">💾</div>
+                <div className="text-3xl md:text-4xl font-black text-white mb-4">SAVE YOUR PROGRESS?</div>
+                <div className="text-zinc-400 text-[11px] font-medium tracking-widest text-center mb-10 px-8 uppercase leading-relaxed">
+                  Log in to save this session's data <br /> and track your performance over time.
                 </div>
-                <div className="flex flex-col gap-3 w-48">
+                <div className="flex flex-col gap-4 w-64">
                   <button
                     onClick={() => navigate("/login")}
-                    className="cursor-pointer w-full py-3 text-sm tracking-widest font-black rounded-lg"
+                    className="cursor-pointer w-full py-4 text-xs tracking-widest font-black rounded-full shadow-[0_0_20px_rgba(0,0,0,0.4)] transition-all hover:scale-105"
                     style={{ background: `linear-gradient(135deg, ${accent}, ${accent}aa)`, color: "#000" }}
                   >
-                    LOGIN
+                    LOGIN TO SAVE
                   </button>
                   <button
                     onClick={() => {
                       setShouldPromptLogin(false);
                       setFinished(true);
                     }}
-                    className="cursor-pointer w-full py-3 text-xs tracking-widest text-white/50 border border-white/10 rounded-lg hover:border-white/30 hover:text-white transition-all"
+                    className="cursor-pointer w-full py-4 text-[10px] font-bold tracking-widest text-zinc-500 border border-zinc-800 rounded-full hover:border-zinc-500 hover:text-white transition-all"
                   >
-                    ข้ามไปก่อน
+                    SKIP FOR NOW
                   </button>
                 </div>
               </div>
@@ -362,10 +390,10 @@ export default function TrainPage({ onFinish, isLoggedIn }) {
 
             {/* status badge */}
             {active && !isResting && (
-              <div className="absolute top-4 left-4 z-10">
+              <div className="absolute top-6 left-6 z-10">
                 <div
-                  className="px-4 py-2 rounded-lg backdrop-blur-sm text-sm font-black tracking-wider transition-all duration-300"
-                  style={{ backgroundColor: color + "25", border: `1px solid ${color}60`, color }}
+                  className="px-5 py-2.5 rounded-full backdrop-blur-md text-[11px] font-black tracking-widest transition-all duration-300 shadow-lg"
+                  style={{ backgroundColor: color + "20", border: `1px solid ${color}50`, color }}
                 >
                   {poseOk ? labelText : "NO POSE"}
                 </div>
@@ -374,30 +402,30 @@ export default function TrainPage({ onFinish, isLoggedIn }) {
 
             {/* confidence bar */}
             {active && poseOk && !isResting && (
-              <div className="absolute top-0 left-0 right-0 h-1 bg-white/10 z-10">
+              <div className="absolute top-0 left-0 right-0 h-1.5 bg-black/50 z-10">
                 <div
-                  className="h-full transition-all duration-300"
-                  style={{ width: `${conf * 100}%`, backgroundColor: color, boxShadow: `0 0 8px ${color}` }}
+                  className="h-full transition-all duration-300 rounded-r-full"
+                  style={{ width: `${conf * 100}%`, backgroundColor: color, boxShadow: `0 0 10px ${color}` }}
                 />
               </div>
             )}
 
             {/* state / elbow angle indicator */}
             {active && poseOk && !isResting && (
-              <div className="absolute top-4 right-4 z-10 flex flex-col items-end gap-2">
+              <div className="absolute top-6 right-6 z-10 flex flex-col items-end gap-3">
                 {!isTimer && (
-                  <div className="text-xs tracking-widest text-white/40 bg-black/50 px-3 py-1.5 rounded backdrop-blur-sm">
+                  <div className="text-[11px] font-black tracking-widest text-zinc-300 bg-black/60 px-4 py-2 rounded-full backdrop-blur-md border border-white/10 shadow-lg">
                     {state === "DOWN" ? "⬇ DOWN" : "⬆ UP"}
                   </div>
                 )}
                 {isTimer && isHolding && (
-                  <div className="text-xs tracking-widest bg-black/50 px-3 py-1.5 rounded backdrop-blur-sm flex items-center gap-2" style={{ color: accent }}>
-                    <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: accent }} />
+                  <div className="text-[11px] font-black tracking-widest bg-black/60 px-4 py-2 rounded-full backdrop-blur-md border border-white/10 flex items-center gap-3 shadow-lg" style={{ color: accent }}>
+                    <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: accent, boxShadow: `0 0 8px ${accent}` }} />
                     HOLDING
                   </div>
                 )}
                 {exercise === "pushup" && elbowAngle !== null && (
-                  <div className="text-xs tracking-widest bg-black/50 px-3 py-1.5 rounded backdrop-blur-sm" style={{ color: elbowAngle <= 115 ? "#ff3b30" : elbowAngle >= 140 ? "#00ff88" : "#ff9500" }}>
+                  <div className="text-[10px] font-bold tracking-widest bg-black/60 px-4 py-2 rounded-full backdrop-blur-md border border-white/10 shadow-lg" style={{ color: elbowAngle <= 115 ? "#ef4444" : elbowAngle >= 140 ? "#00ff88" : "#eab308" }}>
                     ELBOW {Math.round(elbowAngle)}°
                   </div>
                 )}
@@ -408,7 +436,7 @@ export default function TrainPage({ onFinish, isLoggedIn }) {
             {feedback && !isResting && (
               <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
                 <div
-                  className="px-8 py-4 rounded-2xl backdrop-blur-sm text-2xl font-black tracking-wide transition-all duration-150"
+                  className="px-10 py-5 rounded-3xl backdrop-blur-md text-3xl font-black tracking-widest transition-all duration-150 shadow-2xl"
                   style={{ backgroundColor: color + "30", border: `2px solid ${color}`, color: "#fff", textShadow: `0 0 20px ${color}` }}
                 >
                   {feedback}
@@ -418,8 +446,8 @@ export default function TrainPage({ onFinish, isLoggedIn }) {
 
             {/* no pose hint */}
             {active && !poseOk && wsStatus === "connected" && !isResting && (
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
-                <div className="text-xs tracking-widest text-white/30 bg-black/60 px-4 py-2 rounded-full backdrop-blur-sm">
+              <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10">
+                <div className="text-[11px] font-bold tracking-widest text-zinc-400 bg-black/80 px-6 py-3 rounded-full backdrop-blur-md border border-zinc-700 shadow-lg">
                   ไม่พบท่าทาง — ยืนหน้ากล้อง
                 </div>
               </div>
@@ -428,25 +456,25 @@ export default function TrainPage({ onFinish, isLoggedIn }) {
             {/* EXPLAINING / COUNTDOWN Overlay */}
             {active && (isExplaining || (countdown !== null && countdown > 0)) && !isResting && (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-30 backdrop-blur-md">
-                <div className="flex flex-col items-center max-w-lg text-center px-6">
+                <div className="flex flex-col items-center max-w-2xl text-center px-6">
                   {isExplaining ? (
                     <>
-                      <div className="w-96 md:w-[32rem] aspect-video bg-black rounded-2xl overflow-hidden border-2 border-white/20 mb-8 shadow-[0_0_30px_rgba(255,255,255,0.1)]">
-                        <img src={`/src/assets/images/${exercise}_ref.gif`} alt={`${exercise} reference`} className="w-full h-full object-contain " />
+                      <div className="w-full md:w-[32rem] aspect-video bg-zinc-950 rounded-3xl overflow-hidden border border-zinc-700 mb-8 shadow-[0_0_40px_rgba(0,0,0,0.6)]">
+                        <img src={`/src/assets/images/${exercise}_ref.gif`} alt={`${exercise} reference`} className="w-full h-full object-contain" />
                       </div>
-                      <div className="text-white text-xl md:text-2xl tracking-[0.2em] font-black mb-4" style={{ color: accent }}>HOW TO DO IT</div>
-                      <p className="text-base md:text-lg text-white/80 leading-relaxed font-medium mb-8">{cfg.instructionText}</p>
-                      <div className="flex items-center gap-3 text-white/40 text-xs tracking-widest">
-                        <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                      <div className="text-white text-2xl md:text-3xl tracking-[0.2em] font-black mb-4 drop-shadow-md" style={{ color: accent }}>HOW TO DO IT</div>
+                      <p className="text-sm md:text-base text-zinc-300 leading-relaxed font-medium mb-10 max-w-lg">{cfg.instructionText}</p>
+                      <div className="flex items-center gap-3 text-zinc-500 text-[10px] font-bold tracking-widest bg-zinc-900/50 px-5 py-2.5 rounded-full border border-zinc-800">
+                        <div className="w-4 h-4 border-2 border-zinc-600 border-t-white rounded-full animate-spin" />
                         LISTENING TO INSTRUCTIONS...
                       </div>
                     </>
                   ) : (
                     <>
-                      <div className="text-[12rem] font-black text-white leading-none animate-pulse" style={{ textShadow: `0 0 60px ${accent}` }}>
+                      <div className="text-[14rem] font-black text-white leading-none animate-pulse drop-shadow-2xl" style={{ textShadow: `0 0 60px ${accent}80` }}>
                         {countdown}
                       </div>
-                      <div className="text-white/60 tracking-[0.5em] font-black mt-4 uppercase">Get Ready</div>
+                      <div className="text-zinc-400 text-[11px] tracking-[0.5em] font-black mt-6 uppercase">Get Ready</div>
                     </>
                   )}
                 </div>
@@ -456,52 +484,54 @@ export default function TrainPage({ onFinish, isLoggedIn }) {
         </div>
 
         {/* ── Stats sidebar ── */}
-        <div className="w-full lg:w-80 bg-[#0d0d14] border-t lg:border-t-0 lg:border-l border-white/5 flex flex-col">
-          <div className="p-6 border-b border-white/5 text-center">
+        <div className="w-full lg:w-96 bg-zinc-900/40 border-t lg:border-t-0 lg:border-l border-white/5 flex flex-col backdrop-blur-md z-10">
+          <div className="p-8 border-b border-white/5 flex flex-col items-center text-center">
             {isTimer ? (
               <>
-                <div className="text-[10px] tracking-[0.4em] text-white/30 mb-2 uppercase">
-                  SET {currentSet}/{targetSets} — TARGET {targetReps}S
+                <div className="text-[10px] font-bold tracking-[0.3em] text-zinc-500 mb-4 uppercase bg-black/40 px-4 py-2 rounded-full border border-white/5">
+                  SET {currentSet}/{targetSets} <span className="mx-2">|</span> TARGET {targetReps}S
                 </div>
                 <div
-                  className="text-6xl font-black leading-none transition-all duration-200 mb-2"
-                  style={{ fontFamily: "'Arial Black', sans-serif", color: totalTime > 0 ? "#fff" : "#333", textShadow: isHolding ? `0 0 40px ${accent}60` : "none" }}
+                  className="text-7xl font-black leading-none transition-all duration-200 mb-3"
+                  style={{ color: totalTime > 0 ? "#fff" : "#3f3f46", textShadow: isHolding ? `0 0 40px ${accent}60` : "none" }}
                 >
                   {formatTime(totalTime)}
                 </div>
-                <div className="text-xs tracking-widest text-white/20 mb-4">SECONDS</div>
+                <div className="text-[10px] font-bold tracking-[0.3em] text-zinc-500 uppercase">TIME ELAPSED</div>
               </>
             ) : (
               <>
-                <div className="text-[10px] tracking-[0.4em] text-white/30 mb-8 uppercase">
-                  SET {currentSet}/{targetSets} — TARGET {targetReps} REPS
+                <div className="text-[10px] font-bold tracking-[0.3em] text-zinc-500 mb-6 uppercase bg-black/40 px-4 py-2 rounded-full border border-white/5">
+                  SET {currentSet}/{targetSets} <span className="mx-2">|</span> TARGET {targetReps} REPS
                 </div>
-                <div className="flex gap-4">
-                  <div className="flex-1 rounded-2xl bg-gradient-to-b from-[#00ff88]/10 to-transparent border-2 border-white py-14 shadow-[0_0_20px_rgba(0,255,136,0.05)]">
-                    <div className="font-black tracking-[0.2em] text-[#00ff88]/60 mb-2">GOOD</div>
-                    <div className="text-5xl font-black text-[#00ff88]">{good}</div>
+                <div className="flex gap-4 w-full">
+                  <div className="flex-1 rounded-3xl bg-black/40 border border-[#00ff88]/20 py-10 shadow-[0_10px_30px_rgba(0,255,136,0.05)] relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-b from-[#00ff88]/10 to-transparent pointer-events-none" />
+                    <div className="relative z-10 font-black tracking-[0.2em] text-[#00ff88]/60 text-[10px] mb-2">GOOD</div>
+                    <div className="relative z-10 text-5xl font-black text-[#00ff88]">{good}</div>
                   </div>
-                  <div className="flex-1 rounded-2xl bg-gradient-to-b from-[#ff9500]/10 to-transparent border-2 border-white py-14 shadow-[0_0_20px_rgba(255,149,0,0.05)]">
-                    <div className="font-black tracking-[0.2em] text-[#ff9500]/60 mb-2">BAD</div>
-                    <div className="text-5xl font-black text-[#ff9500]">{bad}</div>
+                  <div className="flex-1 rounded-3xl bg-black/40 border border-[#ef4444]/20 py-10 shadow-[0_10px_30px_rgba(239,68,68,0.05)] relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-b from-[#ef4444]/10 to-transparent pointer-events-none" />
+                    <div className="relative z-10 font-black tracking-[0.2em] text-[#ef4444]/60 text-[10px] mb-2">BAD</div>
+                    <div className="relative z-10 text-5xl font-black text-[#ef4444]">{bad}</div>
                   </div>
                 </div>
               </>
             )}
           </div>
 
-          <div className="p-6 flex flex-col gap-3 mt-auto">
+          <div className="p-8 flex flex-col gap-4 mt-auto">
             {active && (
               <>
                 <button
                   onClick={resetSession}
-                  className="cursor-pointer w-full py-3 text-xs tracking-widest text-white/50 border border-white/10 rounded-lg hover:border-white/30 hover:text-white transition-all"
+                  className="cursor-pointer w-full py-4 text-[10px] font-bold tracking-widest text-zinc-500 border border-zinc-800 rounded-full hover:border-zinc-500 hover:text-white transition-all bg-black/20"
                 >
                   RESET SET
                 </button>
                 <button
                   onClick={handleFinish}
-                  className="cursor-pointer w-full py-3 text-xs tracking-widest font-black rounded-lg"
+                  className="cursor-pointer w-full py-4 text-xs tracking-widest font-black rounded-full shadow-[0_0_20px_rgba(0,0,0,0.3)] transition-all hover:scale-105"
                   style={{ background: `linear-gradient(135deg, ${accent}, ${accent}aa)`, color: "#000" }}
                 >
                   FORCE FINISH

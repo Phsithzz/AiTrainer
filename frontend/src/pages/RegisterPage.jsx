@@ -1,13 +1,15 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-
+import Swal from 'sweetalert2';
 export default function RegisterPage() {
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPw, setConfirmPw] = useState('')
+  // eslint-disable-next-line no-unused-vars
   const [agreed, setAgreed] = useState(false)
+  // eslint-disable-next-line no-unused-vars
   const [success, setSuccess] = useState(false)
   const { register, isLoading, error } = useAuth()
   const navigate = useNavigate()
@@ -20,191 +22,237 @@ export default function RegisterPage() {
     if (/[^A-Za-z0-9]/.test(pw)) sc++
     return sc
   }
-  const strengthColor = ['', '#f87171', '#fb923c', '#facc15', '#00ff88']
-  const strengthLabel = ['', 'อ่อนมาก', 'พอใช้', 'ดี', 'แข็งแกร่ง']
+  const strengthColor = ['', '#ef4444', '#f97316', '#eab308', '#22c55e'] // ปรับสีให้ดูเข้ากับ Tailwind มากขึ้น
+  const strengthLabel = ['', 'Weak', 'Fair', 'Good', 'Strong']
   const sc = getStrength(password)
 
-const handleSubmit = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    
-    // 🟢 แนะนำให้ใส่ setError เพื่อให้มันแจ้งเตือนผู้ใช้บนจอ แทนที่จะ return เงียบๆ
+const showError = (message) => {
+      Swal.fire({
+        icon: 'error',
+        title: 'VALIDATION FAILED',
+        text: message,
+        background: '#18181b',
+        color: '#a1a1aa',
+        confirmButtonText: 'RETRY',
+        confirmButtonColor: '#ef4444', // สีแดง
+        customClass: {
+          popup: 'border border-red-500/30 rounded-3xl',
+          title: 'text-red-500 font-black tracking-widest text-xl',
+          confirmButton: 'text-white font-bold tracking-widest rounded-full px-8 py-3 mt-2'
+        }
+      });
+    };
     if (!/^[a-z0-9_]{3,20}$/.test(username)) {
-      return alert("ชื่อผู้ใช้ต้องมี 3-20 ตัวอักษร และห้ามใช้เว้นวรรค/อักขระพิเศษ");
+      return showError("ชื่อผู้ใช้ต้องมี 3-20 ตัวอักษร และห้ามใช้เว้นวรรค/อักขระพิเศษ");
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return alert("รูปแบบอีเมลไม่ถูกต้อง");
+      return showError("รูปแบบอีเมลไม่ถูกต้อง");
     }
-    
-    // 🟢 ลบ || !agreed ออกไปเลยครับ
+
     if (password.length < 8 || password !== confirmPw) {
-      return alert("รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร และตรงกันทั้ง 2 ช่อง");
+      return showError("รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร และตรงกันทั้ง 2 ช่อง");
     }
 
     const ok = await register(username, email, password)
-   // 🟢 แก้ตรงนี้: ถ้าสมัครผ่าน ให้ Navigate ไปหน้า OTP พร้อมแนบ state email ไปด้วย
     if (ok) {
-        navigate('/verify-otp', { state: { email } });
+      navigate('/verify-otp', { state: { email } });
     }
   }
 
-// if (success) return (
-//     <div className="min-h-screen bg-black flex items-center justify-center">
-//       <div className="text-center max-w-md px-6">
-//         <div className="w-14 h-14 border-2 border-[#00ff88]/50 flex items-center justify-center text-[#00ff88] text-2xl mx-auto mb-4">✉️</div>
-//         <h2 className="text-2xl font-black tracking-[0.15em] mb-2 text-white">เช็คอีเมลของคุณ!</h2>
-//         <p className="text-white/60 text-sm tracking-wide mb-8 font-normal leading-relaxed">
-//           เราได้ส่งลิงก์ยืนยันตัวตนไปที่ <span className="text-[#00ff88] font-bold">{email}</span> แล้ว <br/>
-//           กรุณาคลิกลิงก์ในอีเมลเพื่อเปิดใช้งานบัญชีของคุณ
-//         </p>
-//         <button onClick={() => navigate('/login')}
-//           className="px-8 py-3 border border-white/20 bg-transparent text-white/50 font-black text-[11px] tracking-[0.25em] hover:bg-white/10 hover:text-white transition-all">
-//           กลับไปหน้า LOGIN 
-//         </button>
-//       </div>
-//     </div>
-//   )
-
   return (
-    <div className="relative min-h-screen flex flex-col overflow-hidden bg-black">
-      <div className="absolute inset-0 pointer-events-none"
+    <div className="relative min-h-screen flex flex-col overflow-hidden bg-[#0a0a0a] text-white selection:bg-white/30">
+      
+      {/* 🟢 Background Grid Pattern */}
+      <div
+        className="absolute inset-0 pointer-events-none opacity-40"
         style={{
-          backgroundImage: 'linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)',
-          backgroundSize: '40px 40px'
-        }} />
+          backgroundImage:
+            "linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)",
+          backgroundSize: "60px 60px",
+        }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#0a0a0a]/50 to-[#0a0a0a] pointer-events-none" />
 
-      <header className="relative z-10 flex items-center px-8 py-6 border-b-2 border-white">
-        <Link to="/" className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-white text-black flex items-center justify-center font-black text-xs">AI</div>
-          <span className="text-xs tracking-[0.3em] text-white/50 uppercase font-normal">Form Trainer</span>
+      {/* 🟢 Header */}
+      <header className="relative z-10 flex items-center justify-between px-6 md:px-12 py-6 border-b border-white/10 bg-black/20 backdrop-blur-sm">
+        <Link to="/" className="flex items-center gap-4 group cursor-pointer">
+          <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-black font-black text-sm group-hover:bg-zinc-200 transition-colors duration-300">
+            AI
+          </div>
+          <span className="hidden md:block text-xs font-medium tracking-[0.25em] text-zinc-400 uppercase group-hover:text-white transition-colors duration-300">
+            Form Trainer
+          </span>
         </Link>
       </header>
 
+      {/* 🟢 Main Register Box */}
       <main className="relative z-10 flex-1 flex items-center justify-center px-6 py-12">
-        <div className="w-full max-w-md border border-white/15 bg-white/3 p-10">
-
-          <div className="text-[10px] tracking-[0.5em] text-white/40 uppercase mb-2 font-normal">AI-Powered Workout</div>
-          <h1 className="text-5xl font-black tracking-widest leading-none mb-1">CREATE</h1>
-          <h2 className="text-5xl font-black tracking-[0.15em] leading-none mb-2"
-            style={{ WebkitTextStroke: '1.5px rgba(255,255,255,0.45)', color: 'transparent' }}>
+        <div className="w-full max-w-md border border-zinc-800 bg-zinc-900/40 p-10 rounded-3xl backdrop-blur-md shadow-[0_10px_50px_rgba(0,0,0,0.5)]">
+          
+          <div className="text-[10px] tracking-[0.4em] text-zinc-500 uppercase mb-2 font-bold">
+            AI-Powered Workout
+          </div>
+          <h1 className="text-4xl md:text-5xl font-black tracking-widest leading-none mb-1 text-white">
+            CREATE
+          </h1>
+          <h2 className="text-4xl md:text-5xl font-black tracking-[0.15em] leading-none mb-2"
+            style={{ WebkitTextStroke: '1px rgba(255,255,255,0.4)', color: 'transparent' }}>
             ACCOUNT
           </h2>
-          <p className="text-xs tracking-[0.2em] text-white/40 uppercase mb-8 font-normal">สมัครสมาชิก — Form Trainer</p>
+          <p className="text-[11px] tracking-[0.1em] text-zinc-400 uppercase mb-8 font-medium">
+            Join the Next-Gen Form Trainer
+          </p>
 
-          <div className="flex border border-white/20 mb-6">
-            <button onClick={() => navigate('/login')}
-              className="cursor-pointer flex-1 py-2.5 text-[10px] font-black tracking-[0.25em] uppercase text-white/35 hover:text-white transition-colors border-r border-white/20">
+          {/* 🟢 Tabs (Segmented Control) */}
+          <div className="flex bg-black/50 p-1.5 rounded-full mb-8 border border-zinc-800">
+            <button
+              onClick={() => navigate('/login')}
+              className="cursor-pointer flex-1 py-3 text-[10px] font-bold tracking-[0.2em] uppercase text-zinc-500 hover:text-white rounded-full transition-all duration-300"
+            >
               LOGIN
             </button>
-            <button className="flex-1 py-2.5 text-[10px] font-black tracking-[0.25em] uppercase bg-white text-black">
+            <button className="cursor-pointer flex-1 py-3 text-[10px] font-bold tracking-[0.2em] uppercase bg-zinc-800 text-white rounded-full shadow-md transition-all">
               REGISTER
             </button>
           </div>
 
+          {/* 🟢 Error Alert */}
           {error && (
-            <div className="flex items-center gap-2 border border-red-400/40 bg-red-400/8 px-3 py-2.5 mb-4 text-red-400 text-xs tracking-wide">
-              <span>!</span><span>{error}</span>
+            <div className="flex items-center gap-3 border border-red-500/30 bg-red-500/10 px-4 py-3 mb-6 rounded-lg text-red-400 text-xs tracking-wide">
+              <div className="w-5 h-5 rounded-full bg-red-500/20 flex items-center justify-center font-bold">!</div>
+              <span>{error}</span>
             </div>
           )}
 
           <form onSubmit={handleSubmit}>
             {/* Username */}
             <div className="mb-4">
-              <label className="block text-[10px] tracking-[0.25em] text-white/40 uppercase mb-1.5 font-normal">Username</label>
-              <input type="text" value={username} onChange={e => setUsername(e.target.value.toLowerCase())}
-                placeholder="your name"
-                className="
-                focus:border-white/60
-                w-full bg-transparent border border-white/15 text-white text-sm px-4 py-3 outline-none placeholder:text-white/20 tracking-wide transition-colors"
-                style={{ borderColor: username ? (/^[a-z0-9_]{3,20}$/.test(username) ? 'rgba(0,255,136,0.5)' : 'rgba(248,113,113,0.5)') : undefined }}
+              <label className="block text-[10px] font-bold tracking-[0.2em] text-zinc-500 uppercase mb-2 pl-1">
+                Username
+              </label>
+              <input 
+                type="text" 
+                value={username} 
+                onChange={e => setUsername(e.target.value.toLowerCase())}
+                placeholder="yourname"
+                className="w-full bg-black/40 border border-zinc-800 text-white text-sm px-5 py-3.5 rounded-xl outline-none focus:bg-zinc-900 placeholder:text-zinc-600 tracking-wide transition-all duration-300"
+                style={{ 
+                  borderColor: username 
+                    ? (/^[a-z0-9_]{3,20}$/.test(username) ? 'rgba(34,197,94,0.5)' : 'rgba(239,68,68,0.5)') 
+                    : undefined 
+                }}
               />
               {username && (
-                <p className="text-[10px] mt-1 tracking-widest font-normal"
-                  style={{ color: /^[a-z0-9_]{3,20}$/.test(username) ? '#00ff88' : '#f87171' }}>
-                  {/^[a-z0-9_]{3,20}$/.test(username) ? '✓ ชื่อผู้ใช้ใช้ได้' : 'ใช้ได้เฉพาะ a-z, 0-9, _'}
+                <p className="text-[10px] mt-2 ml-1 tracking-widest font-medium"
+                  style={{ color: /^[a-z0-9_]{3,20}$/.test(username) ? '#22c55e' : '#ef4444' }}>
+                  {/^[a-z0-9_]{3,20}$/.test(username) ? '✓ Username is valid' : 'Only a-z, 0-9, and _ (3-20 chars)'}
                 </p>
               )}
             </div>
 
             {/* Email */}
             <div className="mb-4">
-              <label className="block text-[10px] tracking-[0.25em] text-white/40 uppercase mb-1.5 font-normal">Email</label>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+              <label className="block text-[10px] font-bold tracking-[0.2em] text-zinc-500 uppercase mb-2 pl-1">
+                Email
+              </label>
+              <input 
+                type="email" 
+                value={email} 
+                onChange={e => setEmail(e.target.value)}
                 placeholder="your@email.com"
-                className="
-                focus:border-white/60
-                w-full bg-transparent border border-white/15 text-white text-sm px-4 py-3 outline-none placeholder:text-white/20 tracking-wide transition-colors"
-                style={{ borderColor: email ? (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? 'rgba(0,255,136,0.5)' : 'rgba(248,113,113,0.5)') : undefined }}
+                className="w-full bg-black/40 border border-zinc-800 text-white text-sm px-5 py-3.5 rounded-xl outline-none focus:bg-zinc-900 placeholder:text-zinc-600 tracking-wide transition-all duration-300"
+                style={{ 
+                  borderColor: email 
+                    ? (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? 'rgba(34,197,94,0.5)' : 'rgba(239,68,68,0.5)') 
+                    : undefined 
+                }}
               />
             </div>
 
             {/* Password */}
             <div className="mb-4">
-              <label className="block text-[10px] tracking-[0.25em] text-white/40 uppercase mb-1.5 font-normal">Password</label>
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-                placeholder="อย่างน้อย 8 ตัวอักษร"
-                className="
-                focus:border-white/60
-                w-full bg-transparent border border-white/15 text-white text-sm px-4 py-3 outline-none placeholder:text-white/20 tracking-wide transition-colors"
+              <label className="block text-[10px] font-bold tracking-[0.2em] text-zinc-500 uppercase mb-2 pl-1">
+                Password
+              </label>
+              <input 
+                type="password" 
+                value={password} 
+                onChange={e => setPassword(e.target.value)}
+                placeholder="Min 8 characters"
+                className="w-full bg-black/40 border border-zinc-800 text-white text-sm px-5 py-3.5 rounded-xl outline-none focus:border-zinc-400 focus:bg-zinc-900 placeholder:text-zinc-600 tracking-wide transition-all duration-300"
               />
               {password && (
-                <>
-                  <div className="flex gap-1 mt-2">
-                    {[1,2,3,4].map(i => (
-                      <div key={i} className="h-0.5 flex-1 transition-all duration-300"
-                        style={{ background: i <= sc ? strengthColor[sc] : 'rgba(255,255,255,0.1)' }} />
+                <div className="mt-2 ml-1">
+                  <div className="flex gap-1.5 mb-1.5">
+                    {[1, 2, 3, 4].map(i => (
+                      <div key={i} className="h-1 flex-1 rounded-full transition-all duration-500"
+                        style={{ background: i <= sc ? strengthColor[sc] : 'rgba(255,255,255,0.05)' }} />
                     ))}
                   </div>
-                  <p className="text-[10px] mt-1 tracking-widest font-normal" style={{ color: strengthColor[sc] }}>
+                  <p className="text-[10px] tracking-widest font-bold uppercase" style={{ color: strengthColor[sc] }}>
                     {strengthLabel[sc]}
                   </p>
-                </>
+                </div>
               )}
             </div>
 
-            {/* Confirm */}
-            <div className="mb-4">
-              <label className="block text-[10px] tracking-[0.25em] text-white/40 uppercase mb-1.5 font-normal">Confirm Password</label>
-              <input type="password" value={confirmPw} onChange={e => setConfirmPw(e.target.value)}
-                placeholder="ยืนยันรหัสผ่าน"
-                className="
-                focus:border-white/60
-                w-full bg-transparent border border-white/15 text-white text-sm px-4 py-3 outline-none placeholder:text-white/20 tracking-wide transition-colors"
-                style={{ borderColor: confirmPw ? (password === confirmPw ? 'rgba(0,255,136,0.5)' : 'rgba(248,113,113,0.5)') : undefined }}
+            {/* Confirm Password */}
+            <div className="mb-8">
+              <label className="block text-[10px] font-bold tracking-[0.2em] text-zinc-500 uppercase mb-2 pl-1">
+                Confirm Password
+              </label>
+              <input 
+                type="password" 
+                value={confirmPw} 
+                onChange={e => setConfirmPw(e.target.value)}
+                placeholder="Confirm your password"
+                className="w-full bg-black/40 border border-zinc-800 text-white text-sm px-5 py-3.5 rounded-xl outline-none focus:bg-zinc-900 placeholder:text-zinc-600 tracking-wide transition-all duration-300"
+                style={{ 
+                  borderColor: confirmPw 
+                    ? (password === confirmPw ? 'rgba(34,197,94,0.5)' : 'rgba(239,68,68,0.5)') 
+                    : undefined 
+                }}
               />
               {confirmPw && (
-                <p className="text-[10px] mt-1 tracking-widest font-normal"
-                  style={{ color: password === confirmPw ? '#00ff88' : '#f87171' }}>
-                  {password === confirmPw ? '✓ รหัสผ่านตรงกัน' : 'รหัสผ่านไม่ตรงกัน'}
+                <p className="text-[10px] mt-2 ml-1 tracking-widest font-medium"
+                  style={{ color: password === confirmPw ? '#22c55e' : '#ef4444' }}>
+                  {password === confirmPw ? '✓ Passwords match' : 'Passwords do not match'}
                 </p>
               )}
             </div>
 
-   
-
-            <button type="submit" disabled={isLoading}
-              className="
-              cursor-pointer
-              w-full py-3.5 bg-white text-black font-black text-[11px] tracking-[0.25em] uppercase hover:bg-black hover:text-white border border-white transition-all duration-200 disabled:opacity-40">
-              {isLoading ? 'LOADING...' : 'CREATE ACCOUNT'}
+            {/* Submit Button */}
+            <button 
+              type="submit" 
+              disabled={isLoading}
+              className="cursor-pointer w-full py-4 bg-white text-black font-black text-[11px] tracking-[0.2em] uppercase rounded-full hover:bg-zinc-200 hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? 'CREATING...' : 'CREATE ACCOUNT'}
             </button>
           </form>
 
-          <p className="text-center mt-5 text-xs text-white/30 tracking-widest font-normal">
-            มีบัญชีแล้ว?{' '}
-            <button onClick={() => navigate('/login')} className="cursor-pointer text-white/70 hover:text-white transition-colors">
-              LOGIN
+          <p className="text-center mt-6 text-[11px] text-zinc-500 tracking-wider font-medium">
+            Already have an account?{' '}
+            <button 
+              onClick={() => navigate('/login')} 
+              className="cursor-pointer text-white font-bold hover:underline underline-offset-4 transition-all"
+            >
+              SIGN IN
             </button>
           </p>
         </div>
       </main>
 
-      <footer className="relative z-10 flex items-center justify-center gap-4 py-4 border-t-2 border-white">
-        <span className="text-[9px] font-black tracking-[0.2em] text-white">MEDIAPIPE</span>
-        <span className="w-1 h-1 rounded-full bg-white/60" />
-        <span className="text-[9px] font-black tracking-[0.2em] text-white">SKLEARN</span>
-        <span className="w-1 h-1 rounded-full bg-white/60" />
-        <span className="text-[9px] font-black tracking-[0.2em] text-white">FASTAPI WEBSOCKET</span>
-      </footer>
+      {/* 🟢 Footer */}
+      <div className="relative z-10 flex flex-wrap items-center justify-center gap-4 md:gap-8 py-6 border-t border-white/5 bg-black/40 backdrop-blur-md text-[10px] text-zinc-500 tracking-widest uppercase font-medium">
+        <span>MEDIAPIPE</span>
+        <span className="w-1 h-1 rounded-full bg-zinc-700" />
+        <span>SKLEARN</span>
+        <span className="w-1 h-1 rounded-full bg-zinc-700" />
+        <span>FASTAPI WEBSOCKET</span>
+      </div>
     </div>
   )
 }

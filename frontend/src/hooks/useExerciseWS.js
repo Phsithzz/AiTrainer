@@ -11,14 +11,15 @@ const POSE_CONNECTIONS = [
 ];
 
 // 🟢 อัปเดต Label ให้ตรงกับ Model ฝั่ง Backend ทั้ง 3 ท่า
+// 🟢 อัปเดต Label ให้ตรงกับ Model ฝั่ง Backend ทั้ง 3 ท่า และปรับสีให้คอนทราสต์ชัดเจน
 export const EXERCISE_CONFIG = {
   squat: {
     wsPath:  "squat",
-    accent:  "#00ff88",
+    accent:  "#00ff88", // เขียวนีออน
     labelColors: {
-      squat_good:     "#00ff88",
-      squat_bad_heel: "#ff9500",
-      squat_bad_back: "#ff3b30",
+      squat_good:     "#00ff88", // เขียว (Accent)
+      squat_bad_heel: "#eab308", // เหลืองนีออน (Warning)
+      squat_bad_back: "#ef4444", // แดงนีออน (Critical)
     },
     labelText: {
       squat_good:     "เยี่ยมมาก ทรงตัวได้ดี",
@@ -27,20 +28,20 @@ export const EXERCISE_CONFIG = {
     },
     probaKeys: [
       { key: "squat_good",     label: "GOOD",      color: "#00ff88" },
-      { key: "squat_bad_heel", label: "BAD HEEL",  color: "#ff9500" },
-      { key: "squat_bad_back", label: "BAD BACK",  color: "#ff3b30" },
+      { key: "squat_bad_heel", label: "BAD HEEL",  color: "#eab308" },
+      { key: "squat_bad_back", label: "BAD BACK",  color: "#ef4444" },
     ],
     mode: "reps", 
     instructionText: "ในท่า squat ให้คุณกางเท้าเท่าช่วงหัวไหล่ ย่อตัวลงโดยให้หลังตรงและส้นเท้าติดพื้น",
   },
   pushup: {
     wsPath:  "pushup",
-    accent:  "#ff6b35",
+    accent:  "#ff6b35", // ส้มนีออน
     labelColors: {
-      pushup_good:     "#ff6b35",
-      pushup_bad_hips: "#ff9500", // 🟢 อัปเดตตามโมเดลใหม่
-      pushup_bad_legs: "#ff3b30", // 🟢 อัปเดตตามโมเดลใหม่
-      pushup_bad_neck: "#bf5af2", // 🟢 อัปเดตตามโมเดลใหม่
+      pushup_good:     "#ff6b35", // ส้ม (Accent)
+      pushup_bad_hips: "#eab308", // เหลืองนีออน (Warning)
+      pushup_bad_legs: "#ef4444", // แดงนีออน (Critical)
+      pushup_bad_neck: "#06b6d4", // ฟ้าไซไฟ (ตัดกับสีส้มชัดเจน)
     },
     labelText: {
       pushup_good:     "ดีมาก รักษาจังหวะไว้",
@@ -50,21 +51,21 @@ export const EXERCISE_CONFIG = {
     },
     probaKeys: [
       { key: "pushup_good",     label: "GOOD",      color: "#ff6b35" },
-      { key: "pushup_bad_hips", label: "BAD HIPS",  color: "#ff9500" },
-      { key: "pushup_bad_legs", label: "BAD LEGS",  color: "#ff3b30" },
-      { key: "pushup_bad_neck", label: "BAD NECK",  color: "#bf5af2" },
+      { key: "pushup_bad_hips", label: "BAD HIPS",  color: "#eab308" },
+      { key: "pushup_bad_legs", label: "BAD LEGS",  color: "#ef4444" },
+      { key: "pushup_bad_neck", label: "BAD NECK",  color: "#06b6d4" },
     ],
     mode: "reps",
     instructionText: "ในท่า pushup ให้คุณวางมือกว้างกว่าช่วงไหล่เล็กน้อย ลำตัวตรงตั้งแต่หัวถึงส้นเท้า",
   },
   plank: {
     wsPath:  "plank",
-    accent:  "#a855f7",
+    accent:  "#a855f7", // ม่วงนีออน
     labelColors: {
-      plank_good:     "#a855f7",
-      plank_bad_hips: "#ff9500", // 🟢 อัปเดตตามโมเดลใหม่
-      plank_bad_legs: "#ff3b30", // 🟢 อัปเดตตามโมเดลใหม่
-      plank_bad_neck: "#bf5af2", // 🟢 อัปเดตตามโมเดลใหม่
+      plank_good:     "#a855f7", // ม่วง (Accent)
+      plank_bad_hips: "#eab308", // เหลืองนีออน (Warning)
+      plank_bad_legs: "#ef4444", // แดงนีออน (Critical)
+      plank_bad_neck: "#06b6d4", // ฟ้าไซไฟ (ตัดกับสีม่วงชัดเจน)
     },
     labelText: {
       plank_good:     "ฟอร์มสวยมาก เกร็งค้างไว้",
@@ -74,9 +75,9 @@ export const EXERCISE_CONFIG = {
     },
     probaKeys: [
       { key: "plank_good",     label: "GOOD",      color: "#a855f7" },
-      { key: "plank_bad_hips", label: "BAD HIPS",  color: "#ff9500" },
-      { key: "plank_bad_legs", label: "BAD LEGS",  color: "#ff3b30" },
-      { key: "plank_bad_neck", label: "BAD NECK",  color: "#bf5af2" },
+      { key: "plank_bad_hips", label: "BAD HIPS",  color: "#eab308" },
+      { key: "plank_bad_legs", label: "BAD LEGS",  color: "#ef4444" },
+      { key: "plank_bad_neck", label: "BAD NECK",  color: "#06b6d4" },
     ],
     mode: "timer",
     instructionText: "ในท่า plank ให้คุณวางศอกลงกับพื้น เกร็งหน้าท้องและรักษาแนวลำตัวให้ขนานกับพื้น",
