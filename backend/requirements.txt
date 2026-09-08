@@ -1,9 +1,12 @@
 fastapi
-uvicorn
+uvicorn[standard]
 numpy==1.26.4
 joblib==1.5.3
 scikit-learn==1.8.0
-mediapipe==0.10.21
-opencv-python==4.10.0.84
 websockets
 python-multipart
+psycopg2-binary
+python-dotenv
+python-jose[cryptography]
+passlib[bcrypt]
+email-validator

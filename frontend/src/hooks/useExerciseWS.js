@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import "@mediapipe/camera_utils";
+import "@mediapipe/pose";
 
 const WS_BASE = import.meta.env.VITE_WS_URL || "ws://localhost:8000/exercise";
 const SEND_INTERVAL_MS = 100;
+const MEDIAPIPE_POSE_ASSET_BASE =
+  "https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404";
 
 const POSE_CONNECTIONS = [
   [11, 12], [11, 13], [13, 15], [12, 14], [14, 16],
@@ -84,20 +88,32 @@ export const EXERCISE_CONFIG = {
   },
 };
 
-export function useExerciseWS(exercise, videoRef, overlayCanvasRef, active, isTracking = true) {
+export function useExerciseWS(
+  exercise,
+  videoRef,
+  overlayCanvasRef,
+  active,
+  isTracking = true,
+) {
 
   const wsRef       = useRef(null);
-  const intervalRef = useRef(null);
+  const cameraRef   = useRef(null);
+  const poseRef     = useRef(null);
   const sendingRef  = useRef(false);
+  const lastSentAtRef = useRef(0);
   const lastAudioTime = useRef(0);
   
   const [result, setResult]     = useState(null);
   const [wsStatus, setWsStatus] = useState("disconnected");
+  const [cameraReady, setCameraReady] = useState(false);
+  const [cameraError, setCameraError] = useState(null);
 
   const cfg = EXERCISE_CONFIG[exercise] || EXERCISE_CONFIG.squat;
+  const activeRef = useRef(active);
   const isTrackingRef = useRef(isTracking);
   // 🟢 ประกาศตัวแปรเก็บสถานะไว้เหนือฟังก์ชัน (เอาไว้เช็คว่าเพิ่งชมไปหรือยัง)
   const lastWasGood = useRef(false);
+  useEffect(() => { activeRef.current = active; }, [active]);
   useEffect(() => { isTrackingRef.current = isTracking; }, [isTracking]); 
   
 const speakWarning = useCallback((label) => {
@@ -187,16 +203,100 @@ const speakWarning = useCallback((label) => {
     if (canvas) canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
   }, [overlayCanvasRef]);
 
-  // ── capture frame ─────────────────────────────────────────────────────────
-  const captureFrame = useCallback(() => {
+  // ── Client-side MediaPipe: video -> 33 landmarks ─────────────────────────
+  useEffect(() => {
     const video = videoRef.current;
-    if (!video || !video.videoWidth) return null;
-    const tmp = document.createElement("canvas");
-    tmp.width  = video.videoWidth;
-    tmp.height = video.videoHeight;
-    tmp.getContext("2d").drawImage(video, 0, 0);
-    return tmp.toDataURL("image/jpeg", 0.7);
-  }, [videoRef]);
+    if (!video) return undefined;
+
+    let disposed = false;
+    const pose = new globalThis.Pose({
+      locateFile: (file) => `${MEDIAPIPE_POSE_ASSET_BASE}/${file}`,
+    });
+    pose.setOptions({
+      modelComplexity: 1,
+      smoothLandmarks: true,
+      enableSegmentation: false,
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence: 0.5,
+    });
+
+    pose.onResults((poseResults) => {
+      if (disposed || !activeRef.current) return;
+
+      const detectedLandmarks = poseResults.poseLandmarks;
+      if (!detectedLandmarks || detectedLandmarks.length !== 33) {
+        clearCanvas();
+        setResult((previous) => ({
+          ...(previous || {}),
+          pose_detected: false,
+          label: "no_pose",
+          confidence: 0,
+          feedback: "",
+          proba: {},
+          landmarks: null,
+        }));
+        return;
+      }
+
+      if (!isTrackingRef.current || sendingRef.current) return;
+      if (wsRef.current?.readyState !== WebSocket.OPEN) return;
+
+      const now = performance.now();
+      if (now - lastSentAtRef.current < SEND_INTERVAL_MS) return;
+
+      const landmarks = detectedLandmarks.map((landmark) => ({
+        x: landmark.x,
+        y: landmark.y,
+        z: landmark.z,
+        visibility: landmark.visibility ?? 0,
+      }));
+
+      lastSentAtRef.current = now;
+      sendingRef.current = true;
+      try {
+        wsRef.current.send(JSON.stringify({ action: "predict", landmarks }));
+      } catch (error) {
+        console.error("WebSocket landmark send failed:", error);
+        sendingRef.current = false;
+      }
+    });
+
+    const camera = new globalThis.Camera(video, {
+      width: 640,
+      height: 480,
+      facingMode: "user",
+      onFrame: async () => {
+        if (!activeRef.current || disposed) return;
+        try {
+          await pose.send({ image: video });
+        } catch (error) {
+          if (!disposed) console.error("MediaPipe Pose failed:", error);
+        }
+      },
+    });
+
+    poseRef.current = pose;
+    cameraRef.current = camera;
+    camera.start().then(() => {
+      if (!disposed) {
+        setCameraError(null);
+        setCameraReady(true);
+      }
+    }).catch((error) => {
+      if (!disposed) {
+        setCameraReady(false);
+        setCameraError(error);
+      }
+    });
+
+    return () => {
+      disposed = true;
+      cameraRef.current = null;
+      poseRef.current = null;
+      void camera.stop();
+      void pose.close();
+    };
+  }, [videoRef, clearCanvas]);
 
   // ── WebSocket ─────────────────────────────────────────────────────────────
   const connectWS = useCallback(() => {
@@ -233,7 +333,6 @@ const speakWarning = useCallback((label) => {
   }, [exercise, cfg, drawSkeleton, clearCanvas, speakWarning]);
 
   const disconnectWS = useCallback(() => {
-    clearInterval(intervalRef.current);
     wsRef.current?.close();
     wsRef.current      = null;
     sendingRef.current = false;
@@ -241,19 +340,6 @@ const speakWarning = useCallback((label) => {
     window.speechSynthesis.cancel();
     clearCanvas();
   }, [clearCanvas]);
-
-  const startSendLoop = useCallback(() => {
-    clearInterval(intervalRef.current);
-    intervalRef.current = setInterval(() => {
-      if (!isTrackingRef.current || sendingRef.current) return;
-      if (wsRef.current?.readyState !== WebSocket.OPEN) return;
-      
-      const b64 = captureFrame();
-      if (!b64) return;
-      sendingRef.current = true;
-      wsRef.current.send(JSON.stringify({ frame: b64 }));
-    }, SEND_INTERVAL_MS);
-  }, [captureFrame]);
 
   const resetSession = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -264,24 +350,20 @@ const speakWarning = useCallback((label) => {
 
   // ── main effect ───────────────────────────────────────────────────────────
   useEffect(() => {
-    if (active) {
-      connectWS(); 
-      
-      const t = setInterval(() => {
-        if (wsRef.current?.readyState === WebSocket.OPEN) {
-          clearInterval(t);
-          startSendLoop();
-        }
-      }, 200);
+    const connectionTimer = window.setTimeout(() => {
+      if (active) connectWS();
+      else disconnectWS();
+    }, 0);
 
+    if (active) {
       return () => {
-        clearInterval(intervalRef.current);
+        window.clearTimeout(connectionTimer);
         disconnectWS();
       };
-    } else {
-      disconnectWS();
     }
-  }, [active, connectWS, startSendLoop, disconnectWS]);
 
-  return { result, wsStatus, resetSession, cfg };
+    return () => window.clearTimeout(connectionTimer);
+  }, [active, connectWS, disconnectWS]);
+
+  return { result, wsStatus, resetSession, cfg, cameraReady, cameraError };
 }

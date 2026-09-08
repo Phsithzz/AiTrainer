@@ -33,7 +33,38 @@ if (import.meta.env.VITE_IS_MOCK === "true") {
     return { data: { message: 'Mock updated' } };
   };
 
-  // 2. Mock WebSocket for Real-time AI Tracking
+  // 2. Mock Fetch for Dashboard
+  const originalFetch = window.fetch;
+  window.fetch = async (url, options) => {
+    await delay();
+    if (typeof url === 'string' && url.includes('/exercise/dashboard')) {
+      return {
+        ok: true,
+        json: async () => ({
+          my_stats: {
+            total_reps: 35,
+            total_time: 120,
+            average_accuracy: 92,
+            reps_by_ex: { squat: 15, pushup: 20 },
+            time_by_ex: { plank: 120 },
+            acc_by_ex: { squat: 90, pushup: 94 },
+            weaknesses: [['squat_bad_heel', 3], ['squat_bad_back', 2], ['pushup_bad_hips', 2]]
+          },
+          global_stats: {
+            reps_by_ex: { squat: 20, pushup: 15 },
+            time_by_ex: { plank: 90 }
+          },
+          comparison: {
+            is_above_average_time: true,
+            is_above_average_acc: true
+          }
+        })
+      };
+    }
+    return originalFetch(url, options);
+  };
+
+  // 3. Mock WebSocket for Real-time AI Tracking
   class MockWebSocket {
     constructor(url) {
       this.url = url;

@@ -1,9 +1,8 @@
-import cv2
-import mediapipe as mp
 import numpy as np
 import joblib
-import base64
 from pathlib import Path
+
+from services.landmarks import coerce_landmarks, serialize_landmarks
 
 # ── โหลด Model Bundle จากไฟล์ที่เพื่อนเทรนมา ──────────────────────────────────────
 BASE_DIR = Path(__file__).parent.parent.parent
@@ -14,12 +13,11 @@ try:
     model = bundle["model"]
     le = bundle["label_encoder"]
     feature_columns = bundle["feature_columns"]
-    print(f"✓ โหลด pushup bundle สำเร็จ | Classes: {list(le.classes_)}")
+    print(f"[OK] Loaded pushup model bundle | Classes: {list(le.classes_)}")
 except Exception as e:
-    print(f"[ERROR] โหลด Model Bundle ไม่สำเร็จ: {e}")
+    print(f"[ERROR] Failed to load pushup model bundle: {e}")
 
 # ── MediaPipe Constants ───────────────────────────────────────────────────────
-MP_POSE = mp.solutions.pose
 REQUIRED_LANDMARK_INDICES = [0, 7, 8, 11, 12, 13, 14, 15, 16,
                              23, 24, 25, 26, 27, 28, 29, 30, 31, 32]
 LANDMARK_NAMES = [
@@ -274,54 +272,21 @@ class PushupPredictor:
     def __init__(self):
         self.pred_buffer = []
         self.counter = RepCounter()
-        self.pose = MP_POSE.Pose(
-            static_image_mode=False,
-            model_complexity=1,
-            smooth_landmarks=True,
-            min_detection_confidence=0.5,
-            min_tracking_confidence=0.5,
-        )
 
-    def decode_frame(self, b64_string: str) -> np.ndarray:
-        if "," in b64_string:
-            b64_string = b64_string.split(",", 1)[1]
-        img_bytes = base64.b64decode(b64_string)
-        arr = np.frombuffer(img_bytes, dtype=np.uint8)
-        return cv2.imdecode(arr, cv2.IMREAD_COLOR)
-
-    def landmarks_to_list(self, landmarks) -> list:
-        return [{"x": lm.x, "y": lm.y, "z": lm.z, "visibility": lm.visibility} for lm in landmarks.landmark]
-
-    def predict(self, b64_frame: str) -> dict:
-        frame = self.decode_frame(b64_frame)
-        if frame is None:
-            return {"error": "decode failed", "pose_detected": False}
-
-        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        rgb.flags.writeable = False
-        results = self.pose.process(rgb)
-
-        if not results.pose_landmarks:
-            return {
-                "pose_detected": False,
-                "label": "no_pose",
-                "feedback": "",
-                "elbow_angle": None,
-                "landmarks": None,
-                **self.counter.to_dict(),
-            }
+    def predict(self, client_landmarks) -> dict:
+        landmarks = coerce_landmarks(client_landmarks)
         # 🟢 2. ด่านตรวจใหม่: ถ้าเห็นคนแต่ "เห็นไม่เต็มตัว" ให้หยุดแค่นี้ ห้ามนับ!
         # (อย่าลืมเปลี่ยนคำว่า "squat" เป็น "pushup" หรือ "plank" ตามไฟล์ที่คุณแก้อยู่ด้วยนะครับ)
-        if not is_body_fully_visible(results.pose_landmarks, "pushup"):
+        if not is_body_fully_visible(landmarks, "pushup"):
             return {
                 "pose_detected": False,  # บังคับหน้าเว็บให้โชว์ว่า "ไม่พบท่าทาง — ยืนหน้ากล้อง"
                 "label": "no_pose",
                 "feedback": "",
-                "landmarks": self.landmarks_to_list(results.pose_landmarks), # ส่งก้างปลาไปให้ดูระยะ
+                "landmarks": serialize_landmarks(landmarks), # ส่งก้างปลาไปให้ดูระยะ
                 **self.counter.to_dict(),
             }
 
-        feat_dict = landmarks_to_feature_dict(results.pose_landmarks)
+        feat_dict = landmarks_to_feature_dict(landmarks)
         elbow_avg_deg = feat_dict.get("elbow_angle_avg", 999.0) if feat_dict else None
 
         if feat_dict is not None:
@@ -352,7 +317,7 @@ class PushupPredictor:
             "feedback": cfg["feedback"],
             "proba": proba_dict,
             "elbow_angle": elbow_avg_deg,
-            "landmarks": self.landmarks_to_list(results.pose_landmarks),
+            "landmarks": serialize_landmarks(landmarks),
             **self.counter.to_dict(),
         }
 
@@ -361,4 +326,4 @@ class PushupPredictor:
         self.counter.reset()
         
     def close(self):
-        self.pose.close()
+        pass

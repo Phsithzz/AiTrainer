@@ -2,8 +2,8 @@
 
 โปรเจกต์นี้ประกอบด้วย 2 ส่วน:
 
-- `frontend` — React + Vite
-- `backend` — FastAPI + MediaPipe + PostgreSQL
+- `frontend` — React + Vite + MediaPipe Pose (ประมวลผลกล้องใน Browser)
+- `backend` — FastAPI + Scikit-learn + PostgreSQL (รับเฉพาะ landmarks)
 
 ## 1. โปรแกรมที่ต้องติดตั้ง
 
@@ -15,7 +15,7 @@
    - npm จะติดตั้งมาพร้อม Node.js
 3. **Python 3.12 (64-bit)**
    - ตอนติดตั้งให้เลือก `Add Python to PATH`
-   - แนะนำ Python 3.12 เพราะเข้ากับ MediaPipe และแพ็กเกจ ML ในโปรเจกต์นี้
+   - แนะนำ Python 3.12 เพราะเข้ากับแพ็กเกจ ML ในโปรเจกต์นี้
 4. **Google Chrome หรือ Microsoft Edge รุ่นใหม่**
    - ต้องอนุญาตสิทธิ์ใช้กล้อง เพราะหน้าออกกำลังกายใช้ Webcam
 
@@ -75,6 +75,7 @@ SMTP_PORT=587
 SMTP_USER=<อีเมลที่ใช้ส่ง OTP>
 SMTP_PASSWORD=<รหัสผ่านแอปของอีเมล>
 BASE_URL=http://localhost:5173
+CORS_ORIGINS=http://localhost:5173
 ```
 
 ห้ามส่งไฟล์ `.env` ลง Git, GitHub หรือโพสต์ค่าเหล่านี้ในที่สาธารณะ
@@ -109,15 +110,36 @@ python -m uvicorn server:app --reload --host 127.0.0.1 --port 8000
 
 อย่าปิดหน้าต่าง PowerShell ของ Backend ขณะใช้งานโปรเจกต์
 
-## 5. ติดตั้งและเปิด Frontend
+## 5. ติดตั้ง Dependencies และเปิด Frontend
 
 เปิด PowerShell อีกหนึ่งหน้าต่างจากโฟลเดอร์ `Machine` แล้วรัน:
 
 ```powershell
 cd frontend
-npm.cmd ci
+npm.cmd install
 npm.cmd run dev
 ```
+
+คำสั่ง `npm.cmd install` หรือที่มักเขียนสั้น ๆ ว่า `npm i` ต้องรันก่อนเปิด Frontend ครั้งแรก เพื่อดาวน์โหลดแพ็กเกจทั้งหมดจาก `package.json`
+
+MediaPipe ฝั่ง Browser ถูกบันทึกไว้ใน `package.json` แล้ว จึงไม่ต้องติดตั้งแยก แต่ถ้าต้องเพิ่มลงในโปรเจกต์ใหม่ให้ใช้:
+
+```powershell
+npm.cmd install @mediapipe/pose @mediapipe/camera_utils
+```
+
+เนื่องจากโปรเจกต์มี `package-lock.json` อยู่แล้ว สามารถใช้คำสั่งนี้แทน `npm.cmd install` ได้ และแนะนำสำหรับการติดตั้งบนเครื่องใหม่เพราะจะติดตั้งเวอร์ชันตรงตาม lock file:
+
+```powershell
+npm.cmd ci
+```
+
+สรุปคือเลือกใช้เพียงคำสั่งเดียว:
+
+- `npm.cmd install` — ใช้งานทั่วไป หรือเมื่อมีการเพิ่ม/แก้ dependency
+- `npm.cmd ci` — ติดตั้งใหม่ตาม `package-lock.json` แบบตรงเวอร์ชัน (แนะนำสำหรับเครื่องเพื่อน)
+
+ไม่ต้องรันทั้งสองคำสั่งต่อกัน
 
 จากนั้นเปิด:
 
@@ -212,4 +234,3 @@ npm.cmd --version
 ### สมัครสมาชิกได้แต่ไม่ได้รับ OTP
 
 ตรวจ `SMTP_USER`, `SMTP_PASSWORD`, SMTP port และดู error ในหน้าต่าง Backend หากใช้ Gmail ควรใช้ App Password ไม่ใช่รหัสผ่านบัญชีปกติ
-

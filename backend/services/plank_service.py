@@ -1,10 +1,9 @@
-import cv2
-import mediapipe as mp
 import numpy as np
 import joblib
-import base64
 import time
 from pathlib import Path
+
+from services.landmarks import coerce_landmarks, serialize_landmarks
 
 # ── โหลด Model Bundle ─────────────────────────────────────────────────────────
 BASE_DIR = Path(__file__).parent.parent.parent
@@ -15,12 +14,11 @@ try:
     model = bundle["model"]
     le = bundle["label_encoder"]
     feature_columns = bundle["feature_columns"]
-    print(f"✓ โหลด plank bundle สำเร็จ | Classes: {list(le.classes_)}")
+    print(f"[OK] Loaded plank model bundle | Classes: {list(le.classes_)}")
 except Exception as e:
-    print(f"[ERROR] โหลด Model Bundle ไม่สำเร็จ: {e}")
+    print(f"[ERROR] Failed to load plank model bundle: {e}")
 
 # ── MediaPipe Constants ───────────────────────────────────────────────────────
-MP_POSE = mp.solutions.pose
 REQUIRED_LANDMARK_INDICES = [0, 7, 8, 11, 12, 13, 14, 15, 16,
                              23, 24, 25, 26, 27, 28, 29, 30, 31, 32]
 LANDMARK_NAMES = [
@@ -269,53 +267,21 @@ class PlankPredictor:
     def __init__(self):
         self.pred_buffer = []
         self.timer = HoldTimer()
-        self.pose = MP_POSE.Pose(
-            static_image_mode=False,
-            model_complexity=1,
-            smooth_landmarks=True,
-            min_detection_confidence=0.5,
-            min_tracking_confidence=0.5,
-        )
 
-    def decode_frame(self, b64_string: str) -> np.ndarray:
-        if "," in b64_string:
-            b64_string = b64_string.split(",", 1)[1]
-        img_bytes = base64.b64decode(b64_string)
-        arr = np.frombuffer(img_bytes, dtype=np.uint8)
-        return cv2.imdecode(arr, cv2.IMREAD_COLOR)
-
-    def landmarks_to_list(self, landmarks) -> list:
-        return [{"x": lm.x, "y": lm.y, "z": lm.z, "visibility": lm.visibility} for lm in landmarks.landmark]
-
-    def predict(self, b64_frame: str) -> dict:
-        frame = self.decode_frame(b64_frame)
-        if frame is None:
-            return {"error": "decode failed", "pose_detected": False}
-
-        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        rgb.flags.writeable = False
-        results = self.pose.process(rgb)
-
-        if not results.pose_landmarks:
-            return {
-                "pose_detected": False,
-                "label": "no_pose",
-                "feedback": "",
-                "landmarks": None,
-                **self.timer.to_dict(),
-            }
+    def predict(self, client_landmarks) -> dict:
+        landmarks = coerce_landmarks(client_landmarks)
 
         # ด่านตรวจที่ 2: เห็นไม่เต็มตัว ให้หยุด
-        if not is_body_fully_visible(results.pose_landmarks, "plank"):
+        if not is_body_fully_visible(landmarks, "plank"):
             return {
                 "pose_detected": False,  
                 "label": "no_pose",
                 "feedback": "",
-                "landmarks": self.landmarks_to_list(results.pose_landmarks), 
+                "landmarks": serialize_landmarks(landmarks),
                 **self.timer.to_dict(),
             }
             
-        feat_dict = landmarks_to_feature_dict(results.pose_landmarks)
+        feat_dict = landmarks_to_feature_dict(landmarks)
         if feat_dict is not None:
             vec = build_feature_vector(feat_dict, feature_columns)
             proba = model.predict_proba(vec)
@@ -330,7 +296,7 @@ class PlankPredictor:
             confidence = float(proba[0][smooth_idx])
 
             # 🚨 ด่านตรวจจับคนโกง: เช็คคนแอบนอนราบพื้น (Lying Flat Detector)
-            lm = results.pose_landmarks.landmark
+            lm = landmarks.landmark
             side, hip_i, knee_i, ankle_i, shoulder_i = _get_main_side(lm)
             
             shoulder_y = lm[shoulder_i].y
@@ -360,7 +326,7 @@ class PlankPredictor:
             "confidence": confidence,
             "feedback": feedback,
             "proba": proba_dict,
-            "landmarks": self.landmarks_to_list(results.pose_landmarks),
+            "landmarks": serialize_landmarks(landmarks),
             **self.timer.to_dict(),
         }
 
@@ -369,4 +335,4 @@ class PlankPredictor:
         self.timer.reset()
         
     def close(self):
-        self.pose.close()
+        pass

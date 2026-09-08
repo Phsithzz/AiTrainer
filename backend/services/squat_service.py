@@ -1,9 +1,8 @@
-import cv2
-import mediapipe as mp
 import numpy as np
 import joblib
-import base64
 from pathlib import Path
+
+from services.landmarks import coerce_landmarks, serialize_landmarks
 
 # ── โหลด Model Bundle ─────────────────────────────────────────────────────────
 BASE_DIR = Path(__file__).parent.parent.parent
@@ -14,13 +13,12 @@ try:
     model = bundle["model"]
     le = bundle["label_encoder"]
     feature_columns = bundle["feature_columns"]
-    print(f"✓ โหลด squat bundle สำเร็จ | Classes: {list(le.classes_)}")
+    print(f"[OK] Loaded squat model bundle | Classes: {list(le.classes_)}")
 except Exception as e:
     raise RuntimeError(f"🚨 โหลดโมเดล SQUAT ไม่สำเร็จ! กรุณาเช็คว่ามีไฟล์ {BUNDLE_PATH} อยู่จริงหรือไม่ (Error: {e})")
-    print(f"[ERROR] โหลด Model Bundle ไม่สำเร็จ: {e}")
+    print(f"[ERROR] Failed to load squat model bundle: {e}")
 
 # ── MediaPipe Constants ───────────────────────────────────────────────────────
-MP_POSE = mp.solutions.pose
 REQUIRED_LANDMARK_INDICES = [0, 7, 8, 11, 12, 13, 14, 15, 16,
                              23, 24, 25, 26, 27, 28, 29, 30, 31, 32]
 LANDMARK_NAMES = [
@@ -177,10 +175,10 @@ class RepCounter:
 
     def _hip_knee_ratio(self, landmarks) -> float:
         lm = landmarks.landmark
-        lh_y = lm[MP_POSE.PoseLandmark.LEFT_HIP].y
-        rh_y = lm[MP_POSE.PoseLandmark.RIGHT_HIP].y
-        lk_y = lm[MP_POSE.PoseLandmark.LEFT_KNEE].y
-        rk_y = lm[MP_POSE.PoseLandmark.RIGHT_KNEE].y
+        lh_y = lm[23].y
+        rh_y = lm[24].y
+        lk_y = lm[25].y
+        rk_y = lm[26].y
         hip_y  = (lh_y + rh_y) / 2
         knee_y = (lk_y + rk_y) / 2
         return hip_y / (knee_y + 1e-6)
@@ -257,53 +255,21 @@ class SquatPredictor:
     def __init__(self):
         self.pred_buffer = []
         self.counter = RepCounter()
-        self.pose = MP_POSE.Pose(
-            static_image_mode=False,
-            model_complexity=1,
-            smooth_landmarks=True,
-            min_detection_confidence=0.5,
-            min_tracking_confidence=0.5,
-        )
 
-    def decode_frame(self, b64_string: str) -> np.ndarray:
-        if "," in b64_string:
-            b64_string = b64_string.split(",", 1)[1]
-        img_bytes = base64.b64decode(b64_string)
-        arr = np.frombuffer(img_bytes, dtype=np.uint8)
-        return cv2.imdecode(arr, cv2.IMREAD_COLOR)
-
-    def landmarks_to_list(self, landmarks) -> list:
-        return [{"x": lm.x, "y": lm.y, "z": lm.z, "visibility": lm.visibility} for lm in landmarks.landmark]
-
-    def predict(self, b64_frame: str) -> dict:
-        frame = self.decode_frame(b64_frame)
-        if frame is None:
-            return {"error": "decode failed", "pose_detected": False}
-
-        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        rgb.flags.writeable = False
-        results = self.pose.process(rgb)
-
-        if not results.pose_landmarks:
-            return {
-                "pose_detected": False,
-                "label": "no_pose",
-                "feedback": "",
-                "landmarks": None,
-                **self.counter.to_dict(),
-            }
+    def predict(self, client_landmarks) -> dict:
+        landmarks = coerce_landmarks(client_landmarks)
         # 🟢 2. ด่านตรวจใหม่: ถ้าเห็นคนแต่ "เห็นไม่เต็มตัว" ให้หยุดแค่นี้ ห้ามนับ!
         # (อย่าลืมเปลี่ยนคำว่า "squat" เป็น "pushup" หรือ "plank" ตามไฟล์ที่คุณแก้อยู่ด้วยนะครับ)
-        if not is_body_fully_visible(results.pose_landmarks, "squat"):
+        if not is_body_fully_visible(landmarks, "squat"):
             return {
                 "pose_detected": False,  # บังคับหน้าเว็บให้โชว์ว่า "ไม่พบท่าทาง — ยืนหน้ากล้อง"
                 "label": "no_pose",
                 "feedback": "",
-                "landmarks": self.landmarks_to_list(results.pose_landmarks), # ส่งก้างปลาไปให้ดูระยะ
+                "landmarks": serialize_landmarks(landmarks), # ส่งก้างปลาไปให้ดูระยะ
                 **self.counter.to_dict(),
             }
 
-        feat_dict = landmarks_to_feature_dict(results.pose_landmarks)
+        feat_dict = landmarks_to_feature_dict(landmarks)
         if feat_dict is not None:
             vec = build_feature_vector(feat_dict, feature_columns)
             proba = model.predict_proba(vec)
@@ -325,7 +291,7 @@ class SquatPredictor:
                     good_idx = list(le.classes_).index("squat_good") if "squat_good" in le.classes_ else 0
                     confidence = float(proba[0][good_idx])
     
-            new_rep, rep_label = self.counter.update(results.pose_landmarks, label)
+            new_rep, rep_label = self.counter.update(landmarks, label)
             
             # -------------------------------------------------------------
             # 🟢 [เพิ่มใหม่!] ล็อคเป้าประจานความผิด (ฉบับ Basket Logic)
@@ -356,7 +322,7 @@ class SquatPredictor:
             "confidence": confidence,
             "feedback": feedback,
             "proba": proba_dict,
-            "landmarks": self.landmarks_to_list(results.pose_landmarks),
+            "landmarks": serialize_landmarks(landmarks),
             **self.counter.to_dict(),
         }
 
@@ -365,4 +331,4 @@ class SquatPredictor:
         self.counter.reset()
         
     def close(self):
-        self.pose.close()
+        pass

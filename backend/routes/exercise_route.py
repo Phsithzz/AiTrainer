@@ -1,10 +1,11 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, Depends
+from pydantic import ValidationError
 import psycopg2
 import os
 import json
 from dotenv import load_dotenv
 
-from schemas import WorkoutData
+from schemas import FrameRequest, WorkoutData
 from auth import get_current_user_id
 
 # 🟢 นำเข้า AI Models ทั้ง 3 ท่า
@@ -175,65 +176,51 @@ def get_dashboard(user_id: int = Depends(get_current_user_id)):
     }
 # ── 4. WebSockets: AI Trainers ────────────────────────────────────────────
 
-@router.websocket("/pushup")
-async def ws_pushup(websocket: WebSocket):
+async def handle_exercise_websocket(websocket: WebSocket, predictor_class):
     await websocket.accept()
-    predictor = PushupPredictor()
+    predictor = predictor_class()
     try:
         while True:
-            data = await websocket.receive_text()
-            msg = json.loads(data)
-            if msg.get("action") == "reset":
+            try:
+                request = FrameRequest(**json.loads(await websocket.receive_text()))
+            except (json.JSONDecodeError, ValidationError) as exc:
+                await websocket.send_json({"error": f"Invalid request: {exc}"})
+                continue
+
+            if request.action == "reset":
                 predictor.reset()
                 await websocket.send_json({"action": "reset_ok"})
                 continue
-            b64_frame = msg.get("frame")
-            if b64_frame:
-                result = predictor.predict(b64_frame)
-                await websocket.send_json(result)
+
+            if request.landmarks is None or len(request.landmarks) != 33:
+                await websocket.send_json(
+                    {"error": "The predict action requires exactly 33 pose landmarks"}
+                )
+                continue
+
+            try:
+                result = predictor.predict(request.landmarks)
+            except ValueError as exc:
+                await websocket.send_json({"error": str(exc)})
+                continue
+
+            await websocket.send_json(result)
     except WebSocketDisconnect:
         pass
     finally:
         predictor.close()
+
+
+@router.websocket("/pushup")
+async def ws_pushup(websocket: WebSocket):
+    await handle_exercise_websocket(websocket, PushupPredictor)
+
 
 @router.websocket("/squat")
 async def ws_squat(websocket: WebSocket):
-    await websocket.accept()
-    predictor = SquatPredictor()
-    try:
-        while True:
-            data = await websocket.receive_text()
-            msg = json.loads(data)
-            if msg.get("action") == "reset":
-                predictor.reset()
-                await websocket.send_json({"action": "reset_ok"})
-                continue
-            b64_frame = msg.get("frame")
-            if b64_frame:
-                result = predictor.predict(b64_frame)
-                await websocket.send_json(result)
-    except WebSocketDisconnect:
-        pass
-    finally:
-        predictor.close()
+    await handle_exercise_websocket(websocket, SquatPredictor)
+
 
 @router.websocket("/plank")
 async def ws_plank(websocket: WebSocket):
-    await websocket.accept()
-    predictor = PlankPredictor()
-    try:
-        while True:
-            data = await websocket.receive_text()
-            msg = json.loads(data)
-            if msg.get("action") == "reset":
-                predictor.reset()
-                await websocket.send_json({"action": "reset_ok"})
-                continue
-            b64_frame = msg.get("frame")
-            if b64_frame:
-                result = predictor.predict(b64_frame)
-                await websocket.send_json(result)
-    except WebSocketDisconnect:
-        pass
-    finally:
-        predictor.close()
+    await handle_exercise_websocket(websocket, PlankPredictor)

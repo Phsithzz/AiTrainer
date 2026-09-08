@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useExerciseWS } from "../hooks/useExerciseWS";
 import { IoMdArrowRoundBack } from "react-icons/io";
@@ -10,7 +10,6 @@ export default function TrainPage({ onFinish, isLoggedIn }) {
   const videoRef = useRef(null);
   const overlayRef = useRef(null);
   
-  const [hasPermission, setHasPermission] = useState(false);
   const [active, setActive] = useState(false);
   const [finished, setFinished] = useState(false);
   const [isTracking, setIsTracking] = useState(false);
@@ -19,13 +18,14 @@ export default function TrainPage({ onFinish, isLoggedIn }) {
   const [shouldPromptLogin, setShouldPromptLogin] = useState(false);
 
   // 🟢 1. State สำหรับระบบ Sets & Reps
-  const { result, wsStatus, resetSession, cfg } = useExerciseWS(
+  const { result, wsStatus, resetSession, cfg, cameraReady, cameraError } = useExerciseWS(
     exercise,
     videoRef,
     overlayRef,
     active,
     isTracking
   );
+  const hasPermission = cameraReady;
   
   const isTimer = cfg.mode === "timer";
   const accent = cfg.accent;
@@ -44,60 +44,39 @@ export default function TrainPage({ onFinish, isLoggedIn }) {
   const label = result?.label || null;
   const color = label ? cfg.labelColors[label] || accent : accent;
   const labelText = label ? cfg.labelText[label] || "DETECTING..." : "DETECTING...";
-  const proba = result?.proba || {};
   const conf = result?.confidence || 0;
   const feedback = result?.feedback || "";
   const poseOk = result?.pose_detected ?? false;
   const state = result?.state || "UP";
 
-  const reps = result?.reps || 0;
   const good = result?.good_count || 0;
   const bad = result?.bad_count || 0;
   const totalTime = result?.total_time || 0;
   const isHolding = result?.is_holding || false;
   const elbowAngle = result?.elbow_angle || null;
 
-  // 🟢 2. เปิดกล้อง
+  // 🟢 2. Camera status from the client-side MediaPipe hook
   useEffect(() => {
-    const startCamera = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 640, height: 480, facingMode: "user" },
-          audio: false,
-        });
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          setHasPermission(true);
-        }
-      } catch (err) {
-        console.error("Camera error:", err);
-        // 🟢 เปลี่ยนจาก alert() ธรรมดา เป็น SweetAlert2
-        Swal.fire({
-          icon: 'error',
-          title: 'CAMERA ACCESS DENIED',
-          text: 'กรุณาอนุญาตให้เข้าถึงกล้องเพื่อใช้งานระบบ Form Trainer',
-          background: '#18181b',
-          color: '#a1a1aa',
-          confirmButtonText: 'ACKNOWLEDGE',
-          confirmButtonColor: '#ef4444',
-          customClass: {
-            popup: 'border border-red-500/30 rounded-3xl',
-            title: 'text-red-500 font-black tracking-widest text-xl',
-            confirmButton: 'text-white font-bold tracking-widest rounded-full px-8 py-3 mt-2'
-          }
-        }).then(() => {
-          navigate('/'); // กลับหน้าแรกถ้าไม่ให้สิทธิ์
-        });
-      }
-    };
-    startCamera();
+    if (!cameraError) return;
 
-    return () => {
-      if (videoRef.current?.srcObject) {
-        videoRef.current.srcObject.getTracks().forEach((t) => t.stop());
+    console.error("Camera error:", cameraError);
+    Swal.fire({
+      icon: 'error',
+      title: 'CAMERA ACCESS DENIED',
+      text: 'กรุณาอนุญาตให้เข้าถึงกล้องเพื่อใช้งานระบบ Form Trainer',
+      background: '#18181b',
+      color: '#a1a1aa',
+      confirmButtonText: 'ACKNOWLEDGE',
+      confirmButtonColor: '#ef4444',
+      customClass: {
+        popup: 'border border-red-500/30 rounded-3xl',
+        title: 'text-red-500 font-black tracking-widest text-xl',
+        confirmButton: 'text-white font-bold tracking-widest rounded-full px-8 py-3 mt-2'
       }
-    };
-  }, [navigate]);
+    }).then(() => {
+      navigate('/');
+    });
+  }, [cameraError, navigate]);
 
   // 🟢 3. จัดการนับถอยหลัง
   useEffect(() => {
@@ -106,10 +85,41 @@ export default function TrainPage({ onFinish, isLoggedIn }) {
       const t = setTimeout(() => setCountdown(countdown - 1), 1000);
       return () => clearTimeout(t);
     } else {
-      setIsTracking(true); // เริ่ม Tracking เมื่อนับเสร็จ
-      setCountdown(null);
+      const t = setTimeout(() => {
+        setIsTracking(true); // เริ่ม Tracking เมื่อนับเสร็จ
+        setCountdown(null);
+      }, 0);
+      return () => clearTimeout(t);
     }
   }, [countdown]);
+
+  const handleFinish = useCallback(() => {
+    setActive(false);
+    if (!isLoggedIn) {
+      setShouldPromptLogin(true);
+    } else {
+      // เอาสถิติสะสมทุกเซ็ต มารวมกับเซ็ตสุดท้าย
+      const finalGood = accumulatedStats.good + good;
+      const finalBad = accumulatedStats.bad + bad;
+      const finalTime = accumulatedStats.time + totalTime;
+      const totalAttempts = finalGood + finalBad;
+      const calculatedAccuracy = totalAttempts > 0 ? Math.round((finalGood / totalAttempts) * 100) : 0;
+
+      const sessionResult = {
+        exercise: exercise,
+        reps: isTimer ? 0 : totalAttempts,
+        good: isTimer ? 0 : finalGood,
+        bad: finalBad,
+        accuracy: isTimer ? 0 : calculatedAccuracy,
+        total_time: isTimer ? finalTime : 0.0,
+        bad_details: result?.bad_details || {}
+      };
+
+      console.log("sessionResult:", sessionResult);
+      onFinish(sessionResult, exercise);
+      setFinished(true);
+    }
+  }, [isLoggedIn, accumulatedStats, good, bad, totalTime, exercise, isTimer, result, onFinish]);
 
   // 🟢 4. ระบบเช็คเป้าหมาย (ทำครบเซ็ตหรือยัง?)
   useEffect(() => {
@@ -119,25 +129,29 @@ export default function TrainPage({ onFinish, isLoggedIn }) {
     const reachedTarget = isTimer ? (totalTime >= targetReps) : (good >= targetReps);
 
     if (reachedTarget && !hasCongratulated.current) {
-      hasCongratulated.current = true; // ล็อคป้องกันการพูดรัวๆ
-      setIsTracking(false); // หยุดจับภาพชั่วคราว
-      window.speechSynthesis.cancel(); // ตัดเสียงด่าทิ้งก่อนเลย
+      const completionTimer = setTimeout(() => {
+        hasCongratulated.current = true; // ล็อคป้องกันการพูดรัวๆ
+        setIsTracking(false); // หยุดจับภาพชั่วคราว
+        window.speechSynthesis.cancel(); // ตัดเสียงด่าทิ้งก่อนเลย
 
-      if (currentSet < targetSets) {
-        // กรณียังไม่ครบทุกเซ็ต -> เข้าสู่โหมดพัก (Rest)
-        const utterance = new SpeechSynthesisUtterance(`เซ็ตที่ ${currentSet} เสร็จสิ้น พักสักครู่ครับ`);
-        utterance.lang = "th-TH";
-        window.speechSynthesis.speak(utterance);
-        setIsResting(true);
-      } else {
-        // กรณีครบทุกเซ็ตแล้ว -> จบโปรแกรม
-        const utterance = new SpeechSynthesisUtterance("ทำครบทุกเซ็ตตามเป้าหมายแล้ว เยี่ยมมากครับ");
-        utterance.lang = "th-TH";
-        window.speechSynthesis.speak(utterance);
-        handleFinish(); 
-      }
+        if (currentSet < targetSets) {
+          // กรณียังไม่ครบทุกเซ็ต -> เข้าสู่โหมดพัก (Rest)
+          const utterance = new SpeechSynthesisUtterance(`เซ็ตที่ ${currentSet} เสร็จสิ้น พักสักครู่ครับ`);
+          utterance.lang = "th-TH";
+          window.speechSynthesis.speak(utterance);
+          setIsResting(true);
+        } else {
+          // กรณีครบทุกเซ็ตแล้ว -> จบโปรแกรม
+          const utterance = new SpeechSynthesisUtterance("ทำครบทุกเซ็ตตามเป้าหมายแล้ว เยี่ยมมากครับ");
+          utterance.lang = "th-TH";
+          window.speechSynthesis.speak(utterance);
+          handleFinish();
+        }
+      }, 0);
+
+      return () => clearTimeout(completionTimer);
     }
-  }, [good, totalTime, active, isExplaining, countdown, isResting, isTimer, targetReps, currentSet, targetSets]);
+  }, [good, totalTime, active, isExplaining, countdown, isResting, isTimer, targetReps, currentSet, targetSets, handleFinish]);
 
   // 🟢 5. เริ่มออกกำลังกาย
   const handleStart = () => {
@@ -171,34 +185,6 @@ export default function TrainPage({ onFinish, isLoggedIn }) {
     setIsResting(false);
     hasCongratulated.current = false;
     setCountdown(3); // นับถอยหลังเข้าเซ็ตใหม่แบบสั้นๆ
-  };
-
-  const handleFinish = () => {
-    setActive(false);
-    if (!isLoggedIn) {
-      setShouldPromptLogin(true);
-    } else {
-      // เอาสถิติสะสมทุกเซ็ต มารวมกับเซ็ตสุดท้าย
-      const finalGood = accumulatedStats.good + good;
-      const finalBad = accumulatedStats.bad + bad;
-      const finalTime = accumulatedStats.time + totalTime;
-      const totalAttempts = finalGood + finalBad;
-      const calculatedAccuracy = totalAttempts > 0 ? Math.round((finalGood / totalAttempts) * 100) : 0;
-      
-      const sessionResult = {
-        exercise: exercise,
-        reps: isTimer ? 0 : totalAttempts,
-        good: isTimer ? 0 : finalGood,
-        bad: finalBad,
-        accuracy: isTimer ? 0 : calculatedAccuracy,
-        total_time: isTimer ? finalTime : 0.0,
-        bad_details: result?.bad_details || {}
-      };
-
-      console.log("sessionResult:", sessionResult);
-      onFinish(sessionResult, exercise); 
-      setFinished(true);
-    }
   };
 
   const handleForceFinish = () => {

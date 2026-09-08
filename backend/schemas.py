@@ -1,10 +1,17 @@
 from pydantic import BaseModel, EmailStr
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Literal
 
-# Frontend ส่ง frame มาเป็น base64
+# Frontend runs MediaPipe and sends only the 33 normalized pose landmarks.
+class PoseLandmark(BaseModel):
+    x: float
+    y: float
+    z: float
+    visibility: float
+
+
 class FrameRequest(BaseModel):
-    frame: str          # base64 encoded JPEG string
-    action: Optional[str] = None   # "reset" หรือ None
+    action: Literal["predict", "reset"] = "predict"
+    landmarks: Optional[List[PoseLandmark]] = None
 
 # Backend ส่งกลับ
 class PredictResponse(BaseModel):
@@ -17,7 +24,7 @@ class PredictResponse(BaseModel):
     bad_count: int
     state: str                      # "UP" | "DOWN"
     proba: Dict[str, float]
-    landmarks: Optional[List[dict]] = None  # ส่ง landmarks กลับให้ frontend วาด skeleton
+    landmarks: Optional[List[PoseLandmark]] = None  # ส่งกลับให้ frontend วาด skeleton
     pose_detected: bool
 
 
