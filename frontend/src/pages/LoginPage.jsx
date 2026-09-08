@@ -182,6 +182,40 @@ export default function LoginPage({ onLogin }) {
             >
               {isLoading ? 'AUTHENTICATING...' : 'SIGN IN'}
             </button>
+            
+            {import.meta.env.VITE_IS_MOCK === "true" && (
+              <button 
+                type="button" 
+                disabled={isLoading}
+                className="cursor-pointer w-full mt-3 py-4 bg-[#00ff88]/20 text-[#00ff88] border border-[#00ff88]/50 font-black text-[11px] tracking-[0.2em] uppercase rounded-full hover:bg-[#00ff88]/30 hover:shadow-[0_0_20px_rgba(0,255,136,0.3)] transition-all duration-300 flex items-center justify-center gap-2"
+                onClick={async (e) => { 
+                  e.preventDefault(); 
+                  setIdentifier('guest@portfolio.com');
+                  setPassword('demo');
+                  const ok = await login("guest@portfolio.com", "demo");
+                  if (ok) {
+                    Swal.fire({
+                      icon: 'success',
+                      title: 'DEMO MODE ACTIVATED',
+                      text: 'เข้าสู่โหมด Portfolio สำหรับรับชมผลงาน',
+                      background: '#18181b',
+                      color: '#a1a1aa',
+                      showConfirmButton: false,
+                      timer: 1500,
+                      customClass: {
+                        popup: 'border border-[#00ff88]/30 rounded-3xl',
+                        title: 'text-[#00ff88] font-black tracking-widest text-xl',
+                      }
+                    }).then(() => {
+                      onLogin?.();
+                      navigate('/');
+                    });
+                  }
+                }}
+              >
+                🚀 PORTFOLIO DEMO LOGIN
+              </button>
+            )}
           </form>
 
           <p className="text-center mt-6 text-[11px] text-zinc-500 tracking-wider font-medium">
