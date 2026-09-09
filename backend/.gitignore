@@ -1,0 +1,9 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# Optional (แนะนำเพิ่ม)
+*.pyo
+*.pyd
+.env
+venv/

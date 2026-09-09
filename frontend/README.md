@@ -1,16 +1,14 @@
-# React + Vite
+# AI Form Trainer - Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This is the frontend for the AI Form Trainer project. It uses React, Vite, and MediaPipe for in-browser pose detection.
 
-Currently, two official plugins are available:
+## Portfolio / Mock Mode
+For resumes or portfolios, you can deploy **only the frontend** to Vercel/Netlify without needing to host the heavy Python/FastAPI ML backend.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Set this environment variable in Vercel or your `.env` file:
+`VITE_IS_MOCK=true`
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+The frontend will automatically:
+1. Provide a "Portfolio Demo Login" button.
+2. Intercept API calls to return realistic dummy data (History, Stats).
+3. Intercept the WebSocket connection to simulate the AI Backend. The camera will still track your body using MediaPipe, and the mock WebSocket will return fake ML predictions (counting reps and simulating form corrections) so recruiters can experience the app fully in the browser!
