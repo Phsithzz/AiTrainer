@@ -1,0 +1,29 @@
+.git
+.gitignore
+.agents
+.codex
+**/.env
+**/.env.*
+**/node_modules
+**/dist
+**/.venv
+**/venv
+**/__pycache__
+**/*.py[cod]
+**/*.log
+
+# Training-only data and scripts are not required at runtime.
+backend/data_csv
+
+# Only the three *_best model bundles are loaded by production services.
+backend/models/label_encoder.pkl
+backend/models/plank_label_encoder.pkl
+backend/models/plank_model.pkl
+backend/models/pushup_label_encoder.pkl
+backend/models/pushup_model.pkl
+backend/models/squat_model.pkl
+backend/models/model_plank_RandomForest.pkl
+backend/models/model_pushup_XGBoost.pkl
+backend/models/model_squat_MLP.pkl
+
+PRESENTATION_TH.md
