@@ -1,0 +1,32 @@
+# Local agent/editor state
+.agents/
+.codex/
+.idea/
+.vscode/
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+
+# Frontend output and dependencies
+node_modules/
+dist/
+coverage/
+*.log
+
+# Python environments and caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+
+# Large training artifacts (keep training scripts and production model bundles)
+backend/data_csv/*.csv
+backend/models/*.pkl
+
+# OS files
+.DS_Store
+Thumbs.db
